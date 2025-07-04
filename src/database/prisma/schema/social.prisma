@@ -1,0 +1,100 @@
+model Post {
+  id            String   @id @default(cuid())
+  authorId      String   @map("author_id")
+  title         String?  @db.VarChar(300)
+  content       String   @db.Text
+  attachments   String[]
+  likesCount    Int      @default(0) @map("likes_count") @db.Integer
+  commentsCount Int      @default(0) @map("comments_count") @db.Integer
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  author   Teacher   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  likes    Like[]
+
+  // Indexes for feed and search
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([likesCount])
+  @@index([commentsCount])
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  authorId  String   @map("author_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  post   Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author Teacher @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([postId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user Teacher @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  // Indexes
+  @@index([postId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("likes")
+}
+
+model Endorsement {
+  id         String   @id @default(cuid())
+  endorserId String   @map("endorser_id")
+  endorsedId String   @map("endorsed_id")
+  skill      String   @db.VarChar(100)
+  message    String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  endorser Teacher @relation("EndorserRelation", fields: [endorserId], references: [id], onDelete: Cascade)
+  endorsed Teacher @relation("EndorsedRelation", fields: [endorsedId], references: [id], onDelete: Cascade)
+
+  @@unique([endorserId, endorsedId, skill])
+  // Indexes
+  @@index([endorserId])
+  @@index([endorsedId])
+  @@index([skill])
+  @@index([createdAt])
+  @@map("endorsements")
+}
+
+model Follow {
+  id           String     @id @default(cuid())
+  followerId   String     @map("follower_id")
+  followingId  String     @map("following_id")
+  followingType FollowType @map("following_type")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations - polymorphic relationship based on followingType
+  followerTeacher Teacher @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  followingTeacher Teacher? @relation("FollowingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId, followingType])
+  // Indexes
+  @@index([followerId])
+  @@index([followingId])
+  @@index([followingType])
+  @@index([createdAt])
+  @@map("follows")
+}

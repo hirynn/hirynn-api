@@ -1,0 +1,31 @@
+// All enum definitions
+enum AdminRole {
+  SUPER_ADMIN
+  MODERATOR
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  VIEWED
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  REJECTED
+  HIRED
+}
+
+enum FollowType {
+  TEACHER
+  SCHOOL
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}

@@ -1,0 +1,77 @@
+model Job {
+  id                  String         @id @default(cuid())
+  schoolId            String         @map("school_id")
+  title               String         @db.VarChar(200)
+  description         String         @db.Text
+  subjects            String[]
+  gradeLevels         String[]       @map("grade_levels")
+  experienceRequired  String         @map("experience_required") @db.VarChar(100)
+  location            String         @db.VarChar(200)
+  employmentType      EmploymentType @map("employment_type")
+  salaryMin           Decimal?       @map("salary_min") @db.Decimal(10, 2)
+  salaryMax           Decimal?       @map("salary_max") @db.Decimal(10, 2)
+  requirements        String?        @db.Text
+  benefits            String?        @db.Text
+  isActive            Boolean        @default(true) @map("is_active")
+  applicationDeadline DateTime?      @map("application_deadline") @db.Timestamptz
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  school       School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  applications JobApplication[]
+  savedJobs    SavedJob[]
+
+  // Indexes for job search and filtering
+  @@index([schoolId])
+  @@index([title])
+  @@index([subjects])
+  @@index([gradeLevels])
+  @@index([location])
+  @@index([employmentType])
+  @@index([salaryMin, salaryMax])
+  @@index([isActive])
+  @@index([applicationDeadline])
+  @@index([createdAt])
+  @@map("jobs")
+}
+
+model JobApplication {
+  id              String            @id @default(cuid())
+  jobId           String            @map("job_id")
+  teacherId       String            @map("teacher_id")
+  status          ApplicationStatus @default(SUBMITTED)
+  coverLetter     String?           @map("cover_letter") @db.Text
+  appliedAt       DateTime          @default(now()) @map("applied_at") @db.Timestamptz
+  statusUpdatedAt DateTime          @default(now()) @map("status_updated_at") @db.Timestamptz
+
+  // Relations
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, teacherId])
+  // Indexes
+  @@index([jobId])
+  @@index([teacherId])
+  @@index([status])
+  @@index([appliedAt])
+  @@map("job_applications")
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  teacherId String   @map("teacher_id")
+  jobId     String   @map("job_id")
+  savedAt   DateTime @default(now()) @map("saved_at") @db.Timestamptz
+
+  // Relations
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, jobId])
+  // Indexes
+  @@index([teacherId])
+  @@index([jobId])
+  @@index([savedAt])
+  @@map("saved_jobs")
+}

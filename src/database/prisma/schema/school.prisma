@@ -1,0 +1,57 @@
+// School Admin model - standalone without User model
+model SchoolAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique @db.VarChar(255)
+  password     String?  @db.VarChar(255)
+  googleId     String?  @unique @map("google_id")
+  linkedinId   String?  @unique @map("linkedIn_id")
+  name         String   @db.VarChar(100)
+  phone        String?  @db.VarChar(20)
+  isVerified   Boolean  @default(false) @map("is_verified")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  refreshToken String?
+  resetToken   String?
+
+  // Relations
+  schools         School[]
+  notifications   Notification[]
+  reportsReporter Report[]       @relation("SchoolAdminReporterRelation")
+  reportsReported Report[]       @relation("ReportedSchoolAdminRelation")
+
+  // Indexes
+  @@index([email])
+  @@index([googleId])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("school_admins")
+}
+
+model School {
+  id            String   @id @default(cuid())
+  schoolAdminId String   @map("school_admin_id")
+  name          String   @db.VarChar(200)
+  logoUrl       String?  @map("logo_url") @db.VarChar(500)
+  bannerUrl     String?  @map("banner_url") @db.VarChar(500)
+  about         String?  @db.Text
+  vision        String?  @db.Text
+  address       String?  @db.VarChar(500)
+  phone         String?  @db.VarChar(20)
+  website       String?  @db.VarChar(200)
+  contactEmail  String?  @map("contact_email") @db.VarChar(255)
+  isVerified    Boolean  @default(false) @map("is_verified")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  schoolAdmin SchoolAdmin @relation(fields: [schoolAdminId], references: [id], onDelete: Cascade)
+  jobs        Job[]
+
+  // Indexes
+  @@index([schoolAdminId])
+  @@index([name])
+  @@index([isVerified])
+  @@index([createdAt])
+  @@map("schools")
+}

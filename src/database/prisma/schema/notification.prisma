@@ -1,0 +1,24 @@
+model Notification {
+    id        String   @id @default(cuid())
+    userId    String   @map("user_id")
+    userType  String   @map("user_type") @db.VarChar(20) // "TEACHER" or "SCHOOL_ADMIN"
+    type      String   @db.VarChar(50)
+    title     String   @db.VarChar(200)
+    message   String   @db.Text
+    data      Json?
+    isRead    Boolean  @default(false) @map("is_read")
+    createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+    // Relations - polymorphic based on userType
+    teacher     Teacher?     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "notifications_teacher_user_id_fkey")
+    schoolAdmin SchoolAdmin? @relation(fields: [userId], references: [id], onDelete: Cascade, map: "notifications_school_admin_user_id_fkey")
+
+    // Indexes for notification queries
+    @@index([userId])
+    @@index([userType])
+    @@index([type])
+    @@index([isRead])
+    @@index([createdAt])
+    @@index([userId, isRead, createdAt])
+    @@map("notifications")
+}

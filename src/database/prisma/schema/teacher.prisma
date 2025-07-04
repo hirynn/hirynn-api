@@ -1,0 +1,136 @@
+// Teacher model - standalone without User model
+model Teacher {
+  id              String   @id @default(cuid())
+  email           String   @unique @db.VarChar(255)
+  password        String?  @db.VarChar(255)
+  googleId        String?  @unique @map("google_id")
+  linkedinId      String?  @unique @map("linkedIn_id")
+  name            String   @db.VarChar(100)
+  phone           String?  @db.VarChar(20)
+  profilePhotoUrl String?  @map("profile_photo_url") @db.VarChar(500)
+  location        String?  @db.VarChar(200)
+  bio             String?  @db.Text
+  subjectsTaught  String[] @map("subjects_taught")
+  gradeLevels     String[] @map("grade_levels")
+  yearsExperience Int      @default(0) @map("years_experience") @db.SmallInt
+  currentSchool   String?  @map("current_school") @db.VarChar(200)
+  isPremium       Boolean  @default(false) @map("is_premium")
+  isVerified      Boolean  @default(false) @map("is_verified")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  refreshToken    String?
+  resetToken      String?
+
+  // Relations
+  education            Education[]
+  certifications       Certification[]
+  portfolio            Portfolio[]
+  demoVideos           DemoVideo[]
+  jobApplications      JobApplication[]
+  savedJobs            SavedJob[]
+  posts                Post[]
+  comments             Comment[]
+  likes                Like[]
+  endorsementsGiven    Endorsement[]    @relation("EndorserRelation")
+  endorsementsReceived Endorsement[]    @relation("EndorsedRelation")
+  followers            Follow[]         @relation("FollowerRelation")
+  following            Follow[]         @relation("FollowingRelation")
+  notifications        Notification[]
+  reportsReporter      Report[]         @relation("ReporterRelation")
+  reportsReported      Report[]         @relation("ReportedTeacherRelation")
+
+  // Indexes for search and filtering
+  @@index([email])
+  @@index([googleId])
+  @@index([name])
+  @@index([location])
+  @@index([subjectsTaught])
+  @@index([gradeLevels])
+  @@index([yearsExperience])
+  @@index([isPremium])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("teachers")
+}
+
+model Education {
+  id             String   @id @default(cuid())
+  teacherId      String   @map("teacher_id")
+  degree         String   @db.VarChar(200)
+  institution    String   @db.VarChar(200)
+  fieldOfStudy   String   @map("field_of_study") @db.VarChar(200)
+  graduationYear Int      @map("graduation_year") @db.SmallInt
+  certificateUrl String?  @map("certificate_url") @db.VarChar(500)
+  isVerified     Boolean  @default(false) @map("is_verified")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([teacherId])
+  @@index([graduationYear])
+  @@index([isVerified])
+  @@map("education")
+}
+
+model Certification {
+  id                  String    @id @default(cuid())
+  teacherId           String    @map("teacher_id")
+  name                String    @db.VarChar(200)
+  issuingOrganization String    @map("issuing_organization") @db.VarChar(200)
+  issueDate           DateTime  @map("issue_date") @db.Date
+  expiryDate          DateTime? @map("expiry_date") @db.Date
+  certificateUrl      String?   @map("certificate_url") @db.VarChar(500)
+  isVerified          Boolean   @default(false) @map("is_verified")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([teacherId])
+  @@index([issueDate])
+  @@index([expiryDate])
+  @@index([isVerified])
+  @@map("certifications")
+}
+
+model Portfolio {
+  id          String   @id @default(cuid())
+  teacherId   String   @map("teacher_id")
+  title       String   @db.VarChar(200)
+  description String?  @db.Text
+  fileUrl     String   @map("file_url") @db.VarChar(500)
+  fileType    String   @map("file_type") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([teacherId])
+  @@index([fileType])
+  @@index([createdAt])
+  @@map("portfolio")
+}
+
+model DemoVideo {
+  id              String   @id @default(cuid())
+  teacherId       String   @map("teacher_id")
+  title           String   @db.VarChar(200)
+  description     String?  @db.Text
+  videoUrl        String   @map("video_url") @db.VarChar(500)
+  thumbnailUrl    String?  @map("thumbnail_url") @db.VarChar(500)
+  durationSeconds Int      @map("duration_seconds") @db.Integer
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([teacherId])
+  @@index([createdAt])
+  @@map("demo_videos")
+}

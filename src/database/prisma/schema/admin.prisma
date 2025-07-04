@@ -1,0 +1,50 @@
+// Platform Administrator model
+model Admin {
+  id           String    @id @default(cuid())
+  email        String    @unique @db.VarChar(255)
+  password     String    @db.VarChar(255)
+  name         String    @db.VarChar(100)
+  role         AdminRole @default(MODERATOR)
+  permissions  String[] // Array of specific permissions
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy    String?   @map("created_by") // Reference to admin who created this admin
+  refreshToken String?
+  resetToken   String?
+
+  // Relations
+  reportsHandled Report[]   @relation("AdminHandlerRelation")
+  auditLogs      AuditLog[]
+
+  // Indexes
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("admins")
+}
+
+// Audit log for admin actions
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String   @map("admin_id")
+  action     String   @db.VarChar(100)
+  resource   String   @db.VarChar(100)
+  resourceId String?  @map("resource_id")
+  details    Json?
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([adminId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
