@@ -323,7 +323,7 @@ export class AuthService {
           expiresIn: this.configService.get<string>(
             'jwt.resetToken.expiresIn',
             '15m',
-          ),
+          ) as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}`,
         },
       );
 
@@ -797,7 +797,7 @@ export class AuthService {
           expiresIn: this.configService.get<string>(
             'jwt.accessToken.expiresIn',
             '15m',
-          ),
+          ) as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}`,
         },
       );
 
@@ -869,14 +869,14 @@ export class AuthService {
         expiresIn: this.configService.get<string>(
           'jwt.accessToken.expiresIn',
           '15m',
-        ),
+        ) as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}`,
       }),
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('jwt.refreshToken.secret'),
         expiresIn: this.configService.get<string>(
           'jwt.refreshToken.expiresIn',
           '7d',
-        ),
+        ) as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}`,
       }),
     ]);
 
