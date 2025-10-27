@@ -22,13 +22,13 @@ import { EmailService } from '../email/email.service';
           expiresIn: configService.get<string>(
             'jwt.accessToken.expiresIn',
             '15m',
-          ),
+          ) as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}`,
         },
       }),
       inject: [ConfigService],
     }),
     ConfigModule,
-    HttpModule
+    HttpModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -37,7 +37,7 @@ import { EmailService } from '../email/email.service';
     JwtStrategy,
     LocalStrategy,
     LinkedInStrategy,
-    EmailService
+    EmailService,
   ],
   exports: [AuthService, JwtModule, PassportModule],
 })

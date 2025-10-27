@@ -9,7 +9,8 @@ import databaseConfig from './config/database.config';
 import linkedinConfig from './config/linkedin.config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import emailConfig from './config/email.config';
-
+import { TeacherModule } from './modules/teacher/teacher.module';
+import { SchoolModule } from './modules/school/school.module';
 @Module({
   imports: [
     ThrottlerModule.forRoot([
@@ -27,6 +28,8 @@ import emailConfig from './config/email.config';
 
     PrismaModule,
     AuthModule,
+    TeacherModule,
+    SchoolModule
   ],
   controllers: [AppController],
   providers: [AppService],
