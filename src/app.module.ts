@@ -11,6 +11,11 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import emailConfig from './config/email.config';
 import { TeacherModule } from './modules/teacher/teacher.module';
 import { SchoolModule } from './modules/school/school.module';
+import { PostModule } from './modules/social/post/post.module';
+import { LikeModule } from './modules/social/like/like.module';
+import { CommentsModule } from './modules/social/comment/comments.module';
+import { EndorsementsModule } from './modules/social/endorsement/endorsements.module';
+import { ReportModule } from './modules/report/report.module';
 @Module({
   imports: [
     ThrottlerModule.forRoot([
@@ -29,7 +34,12 @@ import { SchoolModule } from './modules/school/school.module';
     PrismaModule,
     AuthModule,
     TeacherModule,
-    SchoolModule
+    SchoolModule,
+    PostModule,
+    LikeModule,
+    CommentsModule,
+    EndorsementsModule,
+    ReportModule
   ],
   controllers: [AppController],
   providers: [AppService],

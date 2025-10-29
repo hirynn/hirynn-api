@@ -12,10 +12,13 @@ import {
 } from './dto/upload.dto';
 import { FollowDto } from './dto/follow.dto';
 import { ApplicationStatus } from '@prisma/client';
-
+import { CreateEducationDto } from './dto/create-education.dto';
+import { UpdateEducationDto } from './dto/update-education.dto';
+import { UploadResumeDto } from './dto/upload-resume.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 @Injectable()
 export class TeacherService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private cloudinaryService: CloudinaryService,) {}
 
   // Get teacher profile
 
@@ -294,4 +297,205 @@ async getApplications(
 
     return { message: 'Job removed from saved list' };
   }
+  async create(teacherId: string, dto: CreateEducationDto) {
+    return this.prisma.education.create({
+      data: { teacherId, ...dto },
+    });
+  }
+
+  async findAll(teacherId: string, isPublic = false) {
+    return this.prisma.education.findMany({
+      where: { teacherId },
+      orderBy: { graduationYear: 'desc' },
+      select: isPublic
+        ? {
+            degree: true,
+            institution: true,
+            fieldOfStudy: true,
+            graduationYear: true,
+            certificateUrl: true,
+          }
+        : undefined, // full record if private
+    });
+  }
+
+  async findOne(id: string, isPublic = false) {
+    const education = await this.prisma.education.findUnique({
+      where: { id },
+      select: isPublic
+        ? {
+            degree: true,
+            institution: true,
+            fieldOfStudy: true,
+            graduationYear: true,
+            certificateUrl: true,
+          }
+        : undefined,
+    });
+    if (!education) throw new NotFoundException(`Education with id ${id} not found`);
+    return education;
+  }
+
+  async update(id: string, dto: UpdateEducationDto) {
+    const existing = await this.prisma.education.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Education with id ${id} not found`);
+
+    return this.prisma.education.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async remove(id: string) {
+    const existing = await this.prisma.education.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Education with id ${id} not found`);
+
+    await this.prisma.education.delete({ where: { id } });
+    return { message: 'Education deleted successfully' };
+  }
+
+  //upload resume
+ async uploadResume(teacherId: string, file: Express.Multer.File) {
+  const teacher = await this.prisma.teacher.findUnique({
+    where: { id: teacherId },
+    select: { id: true, resumeUrl: true },
+  });
+
+  if (!teacher) throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+
+  // Delete old resume if exists
+  if (teacher.resumeUrl) {
+    try {
+      const publicId = this.extractPublicId(teacher.resumeUrl);
+      await this.cloudinaryService.deleteFile(publicId, true); // true = raw (PDF/Word)
+    } catch (error) {
+      console.error('Error deleting old resume:', error);
+    }
+  }
+
+  // Upload new resume
+  const { url } = await this.cloudinaryService.uploadFile(file, 'resumes');
+
+  return this.prisma.teacher.update({
+    where: { id: teacherId },
+    data: { resumeUrl: url },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      resumeUrl: true,
+      updatedAt: true,
+    },
+  });
+}
+
+async deleteResume(teacherId: string) {
+  const teacher = await this.prisma.teacher.findUnique({
+    where: { id: teacherId },
+    select: { id: true, resumeUrl: true },
+  });
+
+  if (!teacher) throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+
+  if (teacher.resumeUrl) {
+    try {
+      const publicId = this.extractPublicId(teacher.resumeUrl);
+      await this.cloudinaryService.deleteFile(publicId, true);
+    } catch (error) {
+      console.error('Error deleting resume from Cloudinary:', error);
+    }
+  }
+
+  return this.prisma.teacher.update({
+    where: { id: teacherId },
+    data: { resumeUrl: null },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      resumeUrl: true,
+      updatedAt: true,
+    },
+  });
+}
+
+  async uploadProfilePhoto(teacherId: string, file: Express.Multer.File) {
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: teacherId },
+      select: { id: true, profilePhotoUrl: true },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+    }
+
+    // Delete old photo from Cloudinary if exists
+    if (teacher.profilePhotoUrl) {
+      try {
+        const urlParts = teacher.profilePhotoUrl.split('/');
+        const publicIdWithExt = urlParts.slice(-2).join('/');
+        const publicId = publicIdWithExt.split('.')[0];
+        await this.cloudinaryService.deleteFile(publicId);
+      } catch (error) {
+        console.error('Error deleting old profile photo:', error);
+      }
+    }
+
+    // Upload new photo
+    const { url } = await this.cloudinaryService.uploadFile(file, 'profile_photos');
+
+    return this.prisma.teacher.update({
+      where: { id: teacherId },
+      data: { profilePhotoUrl: url },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profilePhotoUrl: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  // Delete profile photo
+  async deleteProfilePhoto(teacherId: string) {
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: teacherId },
+      select: { id: true, profilePhotoUrl: true },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+    }
+
+    if (teacher.profilePhotoUrl) {
+      try {
+        const urlParts = teacher.profilePhotoUrl.split('/');
+        const publicIdWithExt = urlParts.slice(-2).join('/');
+        const publicId = publicIdWithExt.split('.')[0];
+        await this.cloudinaryService.deleteFile(publicId);
+      } catch (error) {
+        console.error('Error deleting profile photo from Cloudinary:', error);
+      }
+    }
+
+    return this.prisma.teacher.update({
+      where: { id: teacherId },
+      data: { profilePhotoUrl: null },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profilePhotoUrl: true,
+        updatedAt: true,
+      },
+    });
+  }
+// Helper to extract Cloudinary publicId from URL
+private extractPublicId(url: string): string {
+  const parts = url.split('/');
+  const lastTwo = parts.slice(-2).join('/');
+  return lastTwo.split('.')[0];
+}
+
 }
