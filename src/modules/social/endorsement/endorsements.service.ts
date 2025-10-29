@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../../database/prisma.service';
 import { CreateEndorsementDto } from './dto/create-endorsement.dto';
 import { QueryEndorsementDto } from './dto/query-endorsement.dto';
+import { handlePrismaError } from '../../../common/utils/prisma-error.util';
 
 @Injectable()
 export class EndorsementsService {
@@ -15,14 +16,15 @@ export class EndorsementsService {
     if (endorserId === dto.endorsedId) {
       throw new BadRequestException('You cannot endorse yourself');
     }
-    const endorsedExists = await this.prisma.teacher.findUnique({
-      where: { id: dto.endorsedId },
-    });
-    if (!endorsedExists) {
-      throw new NotFoundException('Endorsed teacher not found');
-    }
 
     try {
+      const endorsedExists = await this.prisma.teacher.findUnique({
+        where: { id: dto.endorsedId },
+      });
+      if (!endorsedExists) {
+        throw new NotFoundException('Endorsed teacher not found');
+      }
+
       return await this.prisma.endorsement.create({
         data: {
           endorserId,
@@ -32,10 +34,11 @@ export class EndorsementsService {
         },
       });
     } catch (err) {
+      // Specific duplicate endorsement case
       if (err.code === 'P2002') {
         throw new BadRequestException('You have already endorsed this skill');
       }
-      throw err;
+      handlePrismaError(err);
     }
   }
 
@@ -53,27 +56,31 @@ export class EndorsementsService {
     if (skill) where.skill = skill;
     if (search) where.message = { contains: search, mode: 'insensitive' };
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.endorsement.findMany({
-        where,
-        include: {
-          endorser: {
-            select: {
-              id: true,
-              name: true,
-              profilePhotoUrl: true,
-              email: true,
+    try {
+      const [data, total] = await this.prisma.$transaction([
+        this.prisma.endorsement.findMany({
+          where,
+          include: {
+            endorser: {
+              select: {
+                id: true,
+                name: true,
+                profilePhotoUrl: true,
+                email: true,
+              },
             },
           },
-        },
-        orderBy: { [sortBy]: order },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.endorsement.count({ where }),
-    ]);
+          orderBy: { [sortBy]: order },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.endorsement.count({ where }),
+      ]);
 
-    return { data, meta: { total, page, limit } };
+      return { data, meta: { total, page, limit } };
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
   async findGiven(teacherId: string, query: QueryEndorsementDto) {
@@ -90,11 +97,61 @@ export class EndorsementsService {
     if (skill) where.skill = skill;
     if (search) where.message = { contains: search, mode: 'insensitive' };
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.endorsement.findMany({
-        where,
+    try {
+      const [data, total] = await this.prisma.$transaction([
+        this.prisma.endorsement.findMany({
+          where,
+          include: {
+            endorsed: {
+              select: {
+                id: true,
+                name: true,
+                profilePhotoUrl: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: { [sortBy]: order },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.endorsement.count({ where }),
+      ]);
+
+      return { data, meta: { total, page, limit } };
+    } catch (err) {
+      handlePrismaError(err);
+    }
+  }
+
+  async findGivenForSelf(userId: string, query: QueryEndorsementDto) {
+    return this.findGiven(userId, query);
+  }
+
+  async findSkillCounts(teacherId: string) {
+    try {
+      const endorsements = await this.prisma.endorsement.groupBy({
+        by: ['skill'],
+        where: { endorsedId: teacherId },
+        _count: { skill: true },
+        orderBy: { _count: { skill: 'desc' } },
+      });
+
+      return endorsements.map((e) => ({
+        skill: e.skill,
+        count: e._count.skill,
+      }));
+    } catch (err) {
+      handlePrismaError(err);
+    }
+  }
+
+  async findEndorsersForSkill(teacherId: string, skill: string) {
+    try {
+      return await this.prisma.endorsement.findMany({
+        where: { endorsedId: teacherId, skill },
         include: {
-          endorsed: {
+          endorser: {
             select: {
               id: true,
               name: true,
@@ -103,55 +160,29 @@ export class EndorsementsService {
             },
           },
         },
-        orderBy: { [sortBy]: order },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.endorsement.count({ where }),
-    ]);
-
-    return { data, meta: { total, page, limit } };
-  }
-  async findGivenForSelf(userId: string, query: QueryEndorsementDto) {
-    return this.findGiven(userId, query);
-  }
-  async findSkillCounts(teacherId: string) {
-    const endorsements = await this.prisma.endorsement.groupBy({
-      by: ['skill'],
-      where: { endorsedId: teacherId },
-      _count: { skill: true },
-      orderBy: { _count: { skill: 'desc' } },
-    });
-
-    return endorsements.map((e) => ({ skill: e.skill, count: e._count.skill }));
-  }
-
-  async findEndorsersForSkill(teacherId: string, skill: string) {
-    return this.prisma.endorsement.findMany({
-      where: { endorsedId: teacherId, skill },
-      include: {
-        endorser: {
-          select: {
-            id: true,
-            name: true,
-            profilePhotoUrl: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
   async remove(id: string, userId: string) {
-    const endorsement = await this.prisma.endorsement.findUnique({
-      where: { id },
-    });
-    if (!endorsement) throw new NotFoundException('Endorsement not found');
-    if (endorsement.endorserId !== userId) {
-      throw new BadRequestException('You can only remove your own endorsement');
-    }
+    try {
+      const endorsement = await this.prisma.endorsement.findUnique({
+        where: { id },
+      });
 
-    return this.prisma.endorsement.delete({ where: { id } });
+      if (!endorsement) throw new NotFoundException('Endorsement not found');
+      if (endorsement.endorserId !== userId) {
+        throw new BadRequestException(
+          'You can only remove your own endorsement',
+        );
+      }
+
+      return await this.prisma.endorsement.delete({ where: { id } });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 }
