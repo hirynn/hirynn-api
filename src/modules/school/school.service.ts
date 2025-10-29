@@ -211,7 +211,7 @@ async updateApplicationStatus(
   // First, check if the application exists
   const application = await this.prisma.jobApplication.findUnique({
     where: { jobId_teacherId: { jobId, teacherId } },
-    include: { teacher: true },
+    include: { teacher: true ,job:true},
   });
 
   if (!application) {
@@ -229,15 +229,16 @@ async updateApplicationStatus(
     },
     include: { teacher: true },
   });
-/*
+
+
   // Create notification
 await this.prisma.notification.create({
   data: {
-    userId: teacherId,        // must exist in Teacher table
+    teacherId: teacherId,        // must exist in Teacher table
     userType: 'TEACHER',      // make sure it's TEACHER
     type: 'APPLICATION_STATUS',
     title: `Your application has been ${dto.status}`,
-    message: `Your application for the job "${application.jobId}" is now ${dto.status}`,
+    message: `Your application for the job "${application.job.title}" is now ${dto.status}`,
     data: {
       jobId,
       applicationId: application.id,
@@ -247,7 +248,7 @@ await this.prisma.notification.create({
   },
  
 });
-*/
+
   
 
   return updatedApplication;

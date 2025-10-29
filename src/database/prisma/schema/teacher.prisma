@@ -8,6 +8,7 @@ model Teacher {
   name            String   @db.VarChar(100)
   phone           String?  @db.VarChar(20)
   profilePhotoUrl String?  @map("profile_photo_url") @db.VarChar(500)
+  resumeUrl       String?
   location        String?  @db.VarChar(200)
   bio             String?  @db.Text
   subjectsTaught  String[] @map("subjects_taught")

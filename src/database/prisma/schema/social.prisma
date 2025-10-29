@@ -1,9 +1,7 @@
 model Post {
   id            String   @id @default(cuid())
   authorId      String   @map("author_id")
-  title         String?  @db.VarChar(300)
-  content       String   @db.Text
-  attachments   String[]
+  content       Json
   likesCount    Int      @default(0) @map("likes_count") @db.Integer
   commentsCount Int      @default(0) @map("comments_count") @db.Integer
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -80,14 +78,14 @@ model Endorsement {
 }
 
 model Follow {
-  id           String     @id @default(cuid())
-  followerId   String     @map("follower_id")
-  followingId  String     @map("following_id")
+  id            String     @id @default(cuid())
+  followerId    String     @map("follower_id")
+  followingId   String     @map("following_id")
   followingType FollowType @map("following_type")
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations - polymorphic relationship based on followingType
-  followerTeacher Teacher @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  followerTeacher  Teacher  @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
   followingTeacher Teacher? @relation("FollowingRelation", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId, followingType])
