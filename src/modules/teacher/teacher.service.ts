@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -16,65 +17,82 @@ import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
 import { UploadResumeDto } from './dto/upload-resume.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { handlePrismaError } from '../../common/utils/prisma-error.util';
+
 @Injectable()
 export class TeacherService {
-  constructor(private prisma: PrismaService, private cloudinaryService: CloudinaryService,) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
+  ) {}
 
+  // =======================
   // Get teacher profile
-
+  // =======================
   async getProfile(teacherId: string, isPublic = false) {
-    const teacher = isPublic
-      ? await this.prisma.teacher.findUnique({
-          where: { id: teacherId },
-          select: {
-            id: true,
-            name: true,
-            profilePhotoUrl: true,
-            bio: true,
-            subjectsTaught: true,
-            gradeLevels: true,
-            currentSchool: true,
-            location: true,
-            portfolio: {
-              select: {
-                id: true,
-                title: true,
-                description: true,
-                fileUrl: true,
-                fileType: true,
-                createdAt: true,
+    try {
+      const teacher = isPublic
+        ? await this.prisma.teacher.findUnique({
+            where: { id: teacherId },
+            select: {
+              id: true,
+              name: true,
+              profilePhotoUrl: true,
+              bio: true,
+              subjectsTaught: true,
+              gradeLevels: true,
+              currentSchool: true,
+              location: true,
+              portfolio: {
+                select: {
+                  id: true,
+                  title: true,
+                  description: true,
+                  fileUrl: true,
+                  fileType: true,
+                  createdAt: true,
+                },
+              },
+              demoVideos: {
+                select: {
+                  id: true,
+                  title: true,
+                  description: true,
+                  videoUrl: true,
+                  thumbnailUrl: true,
+                  durationSeconds: true,
+                  createdAt: true,
+                },
               },
             },
-            demoVideos: {
-              select: {
-                id: true,
-                title: true,
-                description: true,
-                videoUrl: true,
-                thumbnailUrl: true,
-                durationSeconds: true,
-                createdAt: true,
-              },
+          })
+        : await this.prisma.teacher.findUnique({
+            where: { id: teacherId },
+            include: {
+              portfolio: true,
+              demoVideos: true,
+              certifications: true,
+              education: true,
+              endorsementsGiven: true,
+              endorsementsReceived: true,
+              followers: true,
+              following: true,
+              savedJobs: true,
+              posts: true,
             },
-          },
-        })
-      : await this.prisma.teacher.findUnique({
-          where: { id: teacherId },
-          include: {
-            portfolio: true,
-            demoVideos: true,
-            certifications: true,
-            education: true,
-          },
-        });
+          });
 
-    if (!teacher)
-      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
-    return teacher;
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+      return teacher;
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
+  // =======================
   // Update teacher profile
-
+  // =======================
   async updateProfile(teacherId: string, dto: UpdateProfileDto) {
     const data: any = {};
 
@@ -112,8 +130,8 @@ export class TeacherService {
           linkedinId: true,
         },
       });
-    } catch (error) {
-      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+    } catch (err) {
+      handlePrismaError(err);
     }
   }
 
@@ -121,55 +139,66 @@ export class TeacherService {
   // Upload portfolio
   // =======================
   async uploadPortfolio(teacherId: string, dto: UploadPortfolioDto) {
-    // Ensure teacher exists
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id: teacherId },
-    });
-    if (!teacher)
-      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+    try {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+      });
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
 
-    return this.prisma.portfolio.create({
-      data: { teacherId, ...dto },
-    });
+      return await this.prisma.portfolio.create({
+        data: { teacherId, ...dto },
+      });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
   // Upload demo video
-
   async uploadDemoVideo(teacherId: string, dto: UploadDemoVideoDto) {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id: teacherId },
-    });
-    if (!teacher)
-      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+    try {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+      });
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
 
-    return this.prisma.demoVideo.create({
-      data: { teacherId, ...dto },
-    });
+      return await this.prisma.demoVideo.create({
+        data: { teacherId, ...dto },
+      });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
+
   // Upload certification
-
   async uploadCertification(teacherId: string, dto: UploadCertificationDto) {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id: teacherId },
-    });
-    if (!teacher)
-      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+    try {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+      });
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
 
-    return this.prisma.certification.create({
-      data: {
-        teacherId,
-        name: dto.name,
-        issuingOrganization: dto.issuingOrganization,
-        issueDate: new Date(dto.issueDate),
-        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
-        certificateUrl: dto.certificateUrl,
-      },
-    });
+      return await this.prisma.certification.create({
+        data: {
+          teacherId,
+          name: dto.name,
+          issuingOrganization: dto.issuingOrganization,
+          issueDate: new Date(dto.issueDate),
+          expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
+          certificateUrl: dto.certificateUrl,
+        },
+      });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
-  // Follow teacher or school
+  // =======================
+  // Follow / Unfollow
+  // =======================
   async follow(teacherId: string, dto: FollowDto) {
-    // Prevent duplicate follow
     try {
       return await this.prisma.follow.create({
         data: {
@@ -178,10 +207,8 @@ export class TeacherService {
           followingType: dto.followingType,
         },
       });
-    } catch (err: any) {
-      if (err.code === 'P2002')
-        throw new ConflictException('Already following');
-      throw err;
+    } catch (err) {
+      handlePrismaError(err);
     }
   }
 
@@ -198,304 +225,341 @@ export class TeacherService {
       });
       return { message: 'Unfollowed successfully' };
     } catch (err) {
-      throw new NotFoundException(
-        `Follow relationship not found for followingId ${dto.followingId}`,
-      );
+      handlePrismaError(err);
     }
   }
 
-  //apllication job status
-async getApplications(
-  teacherId: string,
-  page = 1,
-  limit = 10,
-  status?: ApplicationStatus,
-) {
-  if (!teacherId) throw new NotFoundException('Teacher not found');
+  // =======================
+  // Job Applications
+  // =======================
+  async getApplications(
+    teacherId: string,
+    page = 1,
+    limit = 10,
+    status?: ApplicationStatus,
+  ) {
+    try {
+      const where: any = { teacherId };
+      if (status) where.status = status;
 
-  const where: any = { teacherId };
-  if (status) where.status = status;
-
-  const applications = await this.prisma.jobApplication.findMany({
-    where,
-    skip: (page - 1) * limit,
-    take: limit,
-    include: {
-      job: {
-        select: {
-          id: true,
-          title: true,
-          location: true,
-          employmentType: true,
-          salaryMin: true,
-          salaryMax: true,
-          school: { select: { id: true, name: true } },
+      const applications = await this.prisma.jobApplication.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          job: {
+            select: {
+              id: true,
+              title: true,
+              location: true,
+              employmentType: true,
+              salaryMin: true,
+              salaryMax: true,
+              school: { select: { id: true, name: true } },
+            },
+          },
         },
-      },
-    },
-    orderBy: { appliedAt: 'desc' },
-  });
+        orderBy: { appliedAt: 'desc' },
+      });
 
-  const total = await this.prisma.jobApplication.count({ where });
+      const total = await this.prisma.jobApplication.count({ where });
+      return { total, page, limit, applications };
+    } catch (err) {
+      handlePrismaError(err);
+    }
+  }
 
-  return { total, page, limit, applications };
-}
-
-
-
-  //appliction savejob
+  // =======================
+  // Saved Jobs
+  // =======================
   async saveJob(teacherId: string, jobId: string) {
     try {
       return await this.prisma.savedJob.create({
-        data: {
-          teacherId,
-          jobId,
-        },
+        data: { teacherId, jobId },
       });
-    } catch (err: any) {
-      if (err.code === 'P2002') {
-        throw new ConflictException('Job already saved');
-      }
-      throw err;
+    } catch (err) {
+      handlePrismaError(err);
     }
   }
 
-  // Get all saved jobs
   async getSavedJobs(teacherId: string, page = 1, limit = 10) {
-    const savedJobs = await this.prisma.savedJob.findMany({
-      where: { teacherId },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        job: {
-          select: {
-            id: true,
-            title: true,
-            location: true,
-            employmentType: true,
-            salaryMin: true,
-            salaryMax: true,
-            school: { select: { id: true, name: true } },
+    try {
+      const savedJobs = await this.prisma.savedJob.findMany({
+        where: { teacherId },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          job: {
+            select: {
+              id: true,
+              title: true,
+              location: true,
+              employmentType: true,
+              salaryMin: true,
+              salaryMax: true,
+              school: { select: { id: true, name: true } },
+            },
           },
         },
-      },
-      orderBy: { savedAt: 'desc' },
-    });
+        orderBy: { savedAt: 'desc' },
+      });
 
-    const total = await this.prisma.savedJob.count({ where: { teacherId } });
-
-    return { total, page, limit, savedJobs };
+      const total = await this.prisma.savedJob.count({ where: { teacherId } });
+      return { total, page, limit, savedJobs };
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
-  // Remove a saved job
   async removeSavedJob(teacherId: string, jobId: string) {
-    const deleted = await this.prisma.savedJob.deleteMany({
-      where: { teacherId, jobId },
-    });
-
-    if (!deleted.count) throw new NotFoundException('Saved job not found');
-
-    return { message: 'Job removed from saved list' };
+    try {
+      const deleted = await this.prisma.savedJob.deleteMany({
+        where: { teacherId, jobId },
+      });
+      if (!deleted.count) throw new NotFoundException('Saved job not found');
+      return { message: 'Job removed from saved list' };
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
+
+  // =======================
+  // Education
+  // =======================
   async create(teacherId: string, dto: CreateEducationDto) {
-    return this.prisma.education.create({
-      data: { teacherId, ...dto },
-    });
+    try {
+      return await this.prisma.education.create({
+        data: { teacherId, ...dto },
+      });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
   async findAll(teacherId: string, isPublic = false) {
-    return this.prisma.education.findMany({
-      where: { teacherId },
-      orderBy: { graduationYear: 'desc' },
-      select: isPublic
-        ? {
-            degree: true,
-            institution: true,
-            fieldOfStudy: true,
-            graduationYear: true,
-            certificateUrl: true,
-          }
-        : undefined, // full record if private
-    });
+    try {
+      return await this.prisma.education.findMany({
+        where: { teacherId },
+        orderBy: { graduationYear: 'desc' },
+        select: isPublic
+          ? {
+              degree: true,
+              institution: true,
+              fieldOfStudy: true,
+              graduationYear: true,
+              certificateUrl: true,
+            }
+          : undefined,
+      });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
   async findOne(id: string, isPublic = false) {
-    const education = await this.prisma.education.findUnique({
-      where: { id },
-      select: isPublic
-        ? {
-            degree: true,
-            institution: true,
-            fieldOfStudy: true,
-            graduationYear: true,
-            certificateUrl: true,
-          }
-        : undefined,
-    });
-    if (!education) throw new NotFoundException(`Education with id ${id} not found`);
-    return education;
+    try {
+      const education = await this.prisma.education.findUnique({
+        where: { id },
+        select: isPublic
+          ? {
+              degree: true,
+              institution: true,
+              fieldOfStudy: true,
+              graduationYear: true,
+              certificateUrl: true,
+            }
+          : undefined,
+      });
+      if (!education)
+        throw new NotFoundException(`Education with id ${id} not found`);
+      return education;
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
   async update(id: string, dto: UpdateEducationDto) {
-    const existing = await this.prisma.education.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException(`Education with id ${id} not found`);
-
-    return this.prisma.education.update({
-      where: { id },
-      data: dto,
-    });
+    try {
+      const existing = await this.prisma.education.findUnique({ where: { id } });
+      if (!existing)
+        throw new NotFoundException(`Education with id ${id} not found`);
+      return await this.prisma.education.update({ where: { id }, data: dto });
+    } catch (err) {
+      handlePrismaError(err);
+    }
   }
 
   async remove(id: string) {
-    const existing = await this.prisma.education.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException(`Education with id ${id} not found`);
-
-    await this.prisma.education.delete({ where: { id } });
-    return { message: 'Education deleted successfully' };
-  }
-
-  //upload resume
- async uploadResume(teacherId: string, file: Express.Multer.File) {
-  const teacher = await this.prisma.teacher.findUnique({
-    where: { id: teacherId },
-    select: { id: true, resumeUrl: true },
-  });
-
-  if (!teacher) throw new NotFoundException(`Teacher with id ${teacherId} not found`);
-
-  // Delete old resume if exists
-  if (teacher.resumeUrl) {
     try {
-      const publicId = this.extractPublicId(teacher.resumeUrl);
-      await this.cloudinaryService.deleteFile(publicId, true); // true = raw (PDF/Word)
-    } catch (error) {
-      console.error('Error deleting old resume:', error);
+      const existing = await this.prisma.education.findUnique({ where: { id } });
+      if (!existing)
+        throw new NotFoundException(`Education with id ${id} not found`);
+      await this.prisma.education.delete({ where: { id } });
+      return { message: 'Education deleted successfully' };
+    } catch (err) {
+      handlePrismaError(err);
     }
   }
 
-  // Upload new resume
-  const { url } = await this.cloudinaryService.uploadFile(file, 'resumes');
-
-  return this.prisma.teacher.update({
-    where: { id: teacherId },
-    data: { resumeUrl: url },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      resumeUrl: true,
-      updatedAt: true,
-    },
-  });
-}
-
-async deleteResume(teacherId: string) {
-  const teacher = await this.prisma.teacher.findUnique({
-    where: { id: teacherId },
-    select: { id: true, resumeUrl: true },
-  });
-
-  if (!teacher) throw new NotFoundException(`Teacher with id ${teacherId} not found`);
-
-  if (teacher.resumeUrl) {
+  // =======================
+  // Resume Upload/Delete
+  // =======================
+  async uploadResume(teacherId: string, file: Express.Multer.File) {
     try {
-      const publicId = this.extractPublicId(teacher.resumeUrl);
-      await this.cloudinaryService.deleteFile(publicId, true);
-    } catch (error) {
-      console.error('Error deleting resume from Cloudinary:', error);
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+        select: { id: true, resumeUrl: true },
+      });
+
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+
+      if (teacher.resumeUrl) {
+        try {
+          const publicId = this.extractPublicId(teacher.resumeUrl);
+          await this.cloudinaryService.deleteFile(publicId, true);
+        } catch (error) {
+          console.error('Error deleting old resume:', error);
+        }
+      }
+
+      const { url } = await this.cloudinaryService.uploadFile(file, 'resumes');
+
+      return await this.prisma.teacher.update({
+        where: { id: teacherId },
+        data: { resumeUrl: url },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          resumeUrl: true,
+          updatedAt: true,
+        },
+      });
+    } catch (err) {
+      handlePrismaError(err);
     }
   }
 
-  return this.prisma.teacher.update({
-    where: { id: teacherId },
-    data: { resumeUrl: null },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      resumeUrl: true,
-      updatedAt: true,
-    },
-  });
-}
+  async deleteResume(teacherId: string) {
+    try {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+        select: { id: true, resumeUrl: true },
+      });
 
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+
+      if (teacher.resumeUrl) {
+        try {
+          const publicId = this.extractPublicId(teacher.resumeUrl);
+          await this.cloudinaryService.deleteFile(publicId, true);
+        } catch (error) {
+          console.error('Error deleting resume from Cloudinary:', error);
+        }
+      }
+
+      return await this.prisma.teacher.update({
+        where: { id: teacherId },
+        data: { resumeUrl: null },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          resumeUrl: true,
+          updatedAt: true,
+        },
+      });
+    } catch (err) {
+      handlePrismaError(err);
+    }
+  }
+
+  // =======================
+  // Profile Photo Upload/Delete
+  // =======================
   async uploadProfilePhoto(teacherId: string, file: Express.Multer.File) {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id: teacherId },
-      select: { id: true, profilePhotoUrl: true },
-    });
+    try {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+        select: { id: true, profilePhotoUrl: true },
+      });
 
-    if (!teacher) {
-      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
-    }
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
 
-    // Delete old photo from Cloudinary if exists
-    if (teacher.profilePhotoUrl) {
-      try {
-        const urlParts = teacher.profilePhotoUrl.split('/');
-        const publicIdWithExt = urlParts.slice(-2).join('/');
-        const publicId = publicIdWithExt.split('.')[0];
-        await this.cloudinaryService.deleteFile(publicId);
-      } catch (error) {
-        console.error('Error deleting old profile photo:', error);
+      if (teacher.profilePhotoUrl) {
+        try {
+          const publicId = this.extractPublicId(teacher.profilePhotoUrl);
+          await this.cloudinaryService.deleteFile(publicId);
+        } catch (error) {
+          console.error('Error deleting old profile photo:', error);
+        }
       }
+
+      const { url } = await this.cloudinaryService.uploadFile(
+        file,
+        'profile_photos',
+      );
+
+      return await this.prisma.teacher.update({
+        where: { id: teacherId },
+        data: { profilePhotoUrl: url },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profilePhotoUrl: true,
+          updatedAt: true,
+        },
+      });
+    } catch (err) {
+      handlePrismaError(err);
     }
-
-    // Upload new photo
-    const { url } = await this.cloudinaryService.uploadFile(file, 'profile_photos');
-
-    return this.prisma.teacher.update({
-      where: { id: teacherId },
-      data: { profilePhotoUrl: url },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        profilePhotoUrl: true,
-        updatedAt: true,
-      },
-    });
   }
 
-  // Delete profile photo
   async deleteProfilePhoto(teacherId: string) {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id: teacherId },
-      select: { id: true, profilePhotoUrl: true },
-    });
+    try {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+        select: { id: true, profilePhotoUrl: true },
+      });
 
-    if (!teacher) {
-      throw new NotFoundException(`Teacher with id ${teacherId} not found`);
-    }
+      if (!teacher)
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
 
-    if (teacher.profilePhotoUrl) {
-      try {
-        const urlParts = teacher.profilePhotoUrl.split('/');
-        const publicIdWithExt = urlParts.slice(-2).join('/');
-        const publicId = publicIdWithExt.split('.')[0];
-        await this.cloudinaryService.deleteFile(publicId);
-      } catch (error) {
-        console.error('Error deleting profile photo from Cloudinary:', error);
+      if (teacher.profilePhotoUrl) {
+        try {
+          const publicId = this.extractPublicId(teacher.profilePhotoUrl);
+          await this.cloudinaryService.deleteFile(publicId);
+        } catch (error) {
+          console.error('Error deleting profile photo from Cloudinary:', error);
+        }
       }
+
+      return await this.prisma.teacher.update({
+        where: { id: teacherId },
+        data: { profilePhotoUrl: null },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profilePhotoUrl: true,
+          updatedAt: true,
+        },
+      });
+    } catch (err) {
+      handlePrismaError(err);
     }
-
-    return this.prisma.teacher.update({
-      where: { id: teacherId },
-      data: { profilePhotoUrl: null },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        profilePhotoUrl: true,
-        updatedAt: true,
-      },
-    });
   }
-// Helper to extract Cloudinary publicId from URL
-private extractPublicId(url: string): string {
-  const parts = url.split('/');
-  const lastTwo = parts.slice(-2).join('/');
-  return lastTwo.split('.')[0];
-}
 
+ 
+  // Helper
+  
+  private extractPublicId(url: string): string {
+    const parts = url.split('/');
+    const lastTwo = parts.slice(-2).join('/');
+    return lastTwo.split('.')[0];
+  }
 }
