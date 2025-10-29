@@ -1,8 +1,11 @@
 model Report {
-    id                String       @id @default(cuid())
-    reporterId        String       @map("reporter_id")
-    reporterType      String       @map("reporter_type") @db.VarChar(20) // "TEACHER" or "SCHOOL_ADMIN"
-    reportedUserId    String?      @map("reported_user_id")
+    id                    String  @id @default(cuid())
+    reporterTeacherId     String?
+    reporterSchoolAdminId String?
+    reporterType          String  @map("reporter_type") @db.VarChar(20) // "TEACHER" or "SCHOOL_ADMIN"
+    reportedTeacherId     String?
+    reportedSchoolAdminId String?
+
     reportedUserType  String?      @map("reported_user_type") @db.VarChar(20) // "TEACHER" or "SCHOOL_ADMIN"
     reportedContentId String?      @map("reported_content_id")
     contentType       String?      @map("content_type") @db.VarChar(50)
@@ -14,16 +17,17 @@ model Report {
     resolvedAt        DateTime?    @map("resolved_at") @db.Timestamptz
 
     // Relations - polymorphic based on reporter/reported types
-    reporterTeacher     Teacher?     @relation("ReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade, map: "reports_reporter_teacher_fkey")
-    reporterSchoolAdmin SchoolAdmin? @relation("SchoolAdminReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade, map: "reports_reporter_school_admin_fkey")
-    reportedTeacher     Teacher?     @relation("ReportedTeacherRelation", fields: [reportedUserId], references: [id], onDelete: SetNull, map: "reports_reported_teacher_fkey")
-    reportedSchoolAdmin SchoolAdmin? @relation("ReportedSchoolAdminRelation", fields: [reportedUserId], references: [id], onDelete: SetNull, map: "reports_reported_school_admin_fkey")
+    reporterTeacher     Teacher?     @relation("ReporterRelation", fields: [reporterTeacherId], references: [id], onDelete: Cascade, map: "reports_reporter_teacher_fkey")
+    reporterSchoolAdmin SchoolAdmin? @relation("SchoolAdminReporterRelation", fields: [reporterSchoolAdminId], references: [id], onDelete: Cascade, map: "reports_reporter_school_admin_fkey")
+    reportedTeacher     Teacher?     @relation("ReportedTeacherRelation", fields: [reportedTeacherId], references: [id], onDelete: SetNull, map: "reports_reported_teacher_fkey")
+    reportedSchoolAdmin SchoolAdmin? @relation("ReportedSchoolAdminRelation", fields: [reportedSchoolAdminId], references: [id], onDelete: SetNull, map: "reports_reported_school_admin_fkey")
     handler             Admin?       @relation("AdminHandlerRelation", fields: [handledBy], references: [id], onDelete: SetNull)
 
     // Indexes for admin queries
-    @@index([reporterId])
+    @@index([reporterTeacherId])
+    @@index([reporterSchoolAdminId])
     @@index([reporterType])
-    @@index([reportedUserId])
+    @@index([reportedSchoolAdminId])
     @@index([reportedUserType])
     @@index([contentType])
     @@index([status])

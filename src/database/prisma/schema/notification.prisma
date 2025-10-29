@@ -1,6 +1,7 @@
 model Notification {
     id        String   @id @default(cuid())
-    userId    String   @map("user_id")
+ teacherId      String?  @map("teacher_id")
+  schoolAdminId  String?  @map("school_admin_id")
     userType  String   @map("user_type") @db.VarChar(20) // "TEACHER" or "SCHOOL_ADMIN"
     type      String   @db.VarChar(50)
     title     String   @db.VarChar(200)
@@ -10,15 +11,15 @@ model Notification {
     createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
     // Relations - polymorphic based on userType
-    teacher     Teacher?     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "notifications_teacher_user_id_fkey")
-    schoolAdmin SchoolAdmin? @relation(fields: [userId], references: [id], onDelete: Cascade, map: "notifications_school_admin_user_id_fkey")
+    teacher     Teacher?     @relation(fields: [teacherId], references: [id], onDelete: Cascade, map: "notifications_teacher_user_id_fkey")
+    schoolAdmin SchoolAdmin? @relation(fields: [schoolAdminId], references: [id], onDelete: Cascade, map: "notifications_school_admin_user_id_fkey")
 
     // Indexes for notification queries
-    @@index([userId])
+    @@index([teacherId])
     @@index([userType])
     @@index([type])
     @@index([isRead])
     @@index([createdAt])
-    @@index([userId, isRead, createdAt])
+    @@index([teacherId, isRead, createdAt,schoolAdminId])
     @@map("notifications")
 }
