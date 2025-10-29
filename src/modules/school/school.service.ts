@@ -6,18 +6,23 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { EmploymentType, Prisma, ApplicationStatus } from '@prisma/client';
+import { handlePrismaError } from '../../common/utils/prisma-error.util';
 
 @Injectable()
 export class SchoolService {
   constructor(private prisma: PrismaService) {}
 
-
+  // =======================
   // School CRUD
-
+  // =======================
   async createSchool(adminId: string, dto: CreateSchoolDto) {
-    return this.prisma.school.create({
-      data: { ...dto, schoolAdminId: adminId },
-    });
+    try {
+      return await this.prisma.school.create({
+        data: { ...dto, schoolAdminId: adminId },
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
   }
 
   async updateSchool(schoolId: string, dto: UpdateSchoolDto) {
@@ -27,6 +32,7 @@ export class SchoolService {
         data: dto,
       });
     } catch (error) {
+      handlePrismaError(error);
       throw new NotFoundException(`School with id ${schoolId} not found`);
     }
   }
@@ -36,6 +42,7 @@ export class SchoolService {
       await this.prisma.school.delete({ where: { id: schoolId } });
       return { message: 'School deleted successfully' };
     } catch (error) {
+      handlePrismaError(error);
       throw new NotFoundException(`School with id ${schoolId} not found`);
     }
   }
@@ -46,45 +53,53 @@ export class SchoolService {
     limit = 10,
     filters?: Partial<{ name: string; isVerified: boolean }>,
   ) {
-    const where: any = { schoolAdminId: adminId };
-    if (filters?.name)
-      where.name = { contains: filters.name, mode: 'insensitive' };
-    if (filters?.isVerified !== undefined)
-      where.isVerified = filters.isVerified;
+    try {
+      const where: any = { schoolAdminId: adminId };
+      if (filters?.name)
+        where.name = { contains: filters.name, mode: 'insensitive' };
+      if (filters?.isVerified !== undefined)
+        where.isVerified = filters.isVerified;
 
-    const schools = await this.prisma.school.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    const total = await this.prisma.school.count({ where });
-    return { total, page, limit, schools };
+      const schools = await this.prisma.school.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+      const total = await this.prisma.school.count({ where });
+      return { total, page, limit, schools };
+    } catch (error) {
+      handlePrismaError(error);
+    }
   }
 
   // =======================
   // Job CRUD
   // =======================
   async createJob(dto: CreateJobDto) {
-    return this.prisma.job.create({
-      data: {
-        title: dto.title,
-        description: dto.description,
-        subjects: dto.subjects,
-        gradeLevels: dto.gradeLevels,
-        location: dto.location,
-        schoolId: dto.schoolId,
-        experienceRequired: dto.experienceRequired ?? '0',
-        employmentType: dto.employmentType ?? EmploymentType.FULL_TIME,
-        salaryMin: dto.salaryMin ? new Prisma.Decimal(dto.salaryMin) : null,
-        salaryMax: dto.salaryMax ? new Prisma.Decimal(dto.salaryMax) : null,
-        requirements: dto.requirements ?? null,
-        benefits: dto.benefits ?? null,
-        applicationDeadline: dto.applicationDeadline
-          ? new Date(dto.applicationDeadline)
-          : null,
-        isActive: dto.isActive ?? true,
-      },
-    });
+    try {
+      return await this.prisma.job.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          subjects: dto.subjects,
+          gradeLevels: dto.gradeLevels,
+          location: dto.location,
+          schoolId: dto.schoolId,
+          experienceRequired: dto.experienceRequired ?? '0',
+          employmentType: dto.employmentType ?? EmploymentType.FULL_TIME,
+          salaryMin: dto.salaryMin ? new Prisma.Decimal(dto.salaryMin) : null,
+          salaryMax: dto.salaryMax ? new Prisma.Decimal(dto.salaryMax) : null,
+          requirements: dto.requirements ?? null,
+          benefits: dto.benefits ?? null,
+          applicationDeadline: dto.applicationDeadline
+            ? new Date(dto.applicationDeadline)
+            : null,
+          isActive: dto.isActive ?? true,
+        },
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
   }
 
   async updateJob(jobId: string, dto: UpdateJobDto) {
@@ -104,6 +119,7 @@ export class SchoolService {
         data,
       });
     } catch (error) {
+      handlePrismaError(error);
       throw new NotFoundException(`Job with id ${jobId} not found`);
     }
   }
@@ -113,6 +129,7 @@ export class SchoolService {
       await this.prisma.job.delete({ where: { id: jobId } });
       return { message: 'Job deleted successfully' };
     } catch (error) {
+      handlePrismaError(error);
       throw new NotFoundException(`Job with id ${jobId} not found`);
     }
   }
@@ -127,132 +144,133 @@ export class SchoolService {
       gradeLevels: string[];
     }>,
   ) {
-    const where: any = { schoolId };
-    if (filters?.title)
-      where.title = { contains: filters.title, mode: 'insensitive' };
-    if (filters?.subjects) where.subjects = { hasSome: filters.subjects };
-    if (filters?.gradeLevels) where.gradeLevels = { hasSome: filters.gradeLevels };
+    try {
+      const where: any = { schoolId };
+      if (filters?.title)
+        where.title = { contains: filters.title, mode: 'insensitive' };
+      if (filters?.subjects) where.subjects = { hasSome: filters.subjects };
+      if (filters?.gradeLevels)
+        where.gradeLevels = { hasSome: filters.gradeLevels };
 
-    const jobs = await this.prisma.job.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    const total = await this.prisma.job.count({ where });
-    return { total, page, limit, jobs };
+      const jobs = await this.prisma.job.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+      const total = await this.prisma.job.count({ where });
+      return { total, page, limit, jobs };
+    } catch (error) {
+      handlePrismaError(error);
+    }
   }
 
   // =======================
   // Teacher Job Application
   // =======================
   async applyToJob(teacherId: string, jobId: string, coverLetter?: string) {
-    // Check if job exists
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-    if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
+    try {
+      const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+      if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
 
-    // Prevent duplicate application
-    const existing = await this.prisma.jobApplication.findUnique({
-      where: { jobId_teacherId: { jobId, teacherId } },
-    });
-    if (existing) {
-      throw new BadRequestException('You have already applied to this job');
+      const existing = await this.prisma.jobApplication.findUnique({
+        where: { jobId_teacherId: { jobId, teacherId } },
+      });
+      if (existing) {
+        throw new BadRequestException('You have already applied to this job');
+      }
+
+      return await this.prisma.jobApplication.create({
+        data: {
+          jobId,
+          teacherId,
+          coverLetter: coverLetter ?? null,
+          status: ApplicationStatus.SUBMITTED,
+        },
+      });
+    } catch (error) {
+      handlePrismaError(error);
     }
-
-    return this.prisma.jobApplication.create({
-      data: {
-        jobId,
-        teacherId,
-        coverLetter: coverLetter ?? null,
-        status: ApplicationStatus.SUBMITTED,
-      },
-    });
   }
 
-async getApplicants(jobId: string, page = 1, limit = 10) {
-  // Check if job exists
-  const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-  if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
+  async getApplicants(jobId: string, page = 1, limit = 10) {
+    try {
+      const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+      if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
 
-  // Update all SUBMITTED applications to VIEWED
-  await this.prisma.jobApplication.updateMany({
-    where: {
-      jobId,
-      status: ApplicationStatus.SUBMITTED, // only SUBMITTED applications
-    },
-    data: {
-      status: ApplicationStatus.VIEWED,
-      statusUpdatedAt: new Date(),
-    },
-  });
+      await this.prisma.jobApplication.updateMany({
+        where: {
+          jobId,
+          status: ApplicationStatus.SUBMITTED,
+        },
+        data: {
+          status: ApplicationStatus.VIEWED,
+          statusUpdatedAt: new Date(),
+        },
+      });
 
-  //  Fetch applications with teacher details
-  const applications = await this.prisma.jobApplication.findMany({
-    where: { jobId },
-    skip: (page - 1) * limit,
-    take: limit,
-    include: { teacher: true },
-  });
+      const applications = await this.prisma.jobApplication.findMany({
+        where: { jobId },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { teacher: true },
+      });
 
-  // Count total applications
-  const total = await this.prisma.jobApplication.count({ where: { jobId } });
+      const total = await this.prisma.jobApplication.count({ where: { jobId } });
 
-  return { total, page, limit, applications };
-}
-
-async updateApplicationStatus(
-  jobId: string,
-  teacherId: string,
-  dto: UpdateApplicationDto,
-) {
-  // Trim IDs to avoid invisible whitespace issues
-  jobId = jobId.trim();
-  teacherId = teacherId.trim();
-
-  // First, check if the application exists
-  const application = await this.prisma.jobApplication.findUnique({
-    where: { jobId_teacherId: { jobId, teacherId } },
-    include: { teacher: true ,job:true},
-  });
-
-  if (!application) {
-    throw new NotFoundException(
-      `Application for job ${jobId} by teacher ${teacherId} not found`,
-    );
+      return { total, page, limit, applications };
+    } catch (error) {
+      handlePrismaError(error);
+    }
   }
 
-  // Update the status and statusUpdatedAt
-  const updatedApplication = await this.prisma.jobApplication.update({
-    where: { jobId_teacherId: { jobId, teacherId } },
-    data: {
-      status: dto.status as ApplicationStatus,
-      statusUpdatedAt: new Date(),
-    },
-    include: { teacher: true },
-  });
+  async updateApplicationStatus(
+    jobId: string,
+    teacherId: string,
+    dto: UpdateApplicationDto,
+  ) {
+    try {
+      jobId = jobId.trim();
+      teacherId = teacherId.trim();
 
+      const application = await this.prisma.jobApplication.findUnique({
+        where: { jobId_teacherId: { jobId, teacherId } },
+        include: { teacher: true, job: true },
+      });
 
-  // Create notification
-await this.prisma.notification.create({
-  data: {
-    teacherId: teacherId,        // must exist in Teacher table
-    userType: 'TEACHER',      // make sure it's TEACHER
-    type: 'APPLICATION_STATUS',
-    title: `Your application has been ${dto.status}`,
-    message: `Your application for the job "${application.job.title}" is now ${dto.status}`,
-    data: {
-      jobId,
-      applicationId: application.id,
-      newStatus: dto.status,
-    },
-    isRead: false,
-  },
- 
-});
+      if (!application) {
+        throw new NotFoundException(
+          `Application for job ${jobId} by teacher ${teacherId} not found`,
+        );
+      }
 
-  
+      const updatedApplication = await this.prisma.jobApplication.update({
+        where: { jobId_teacherId: { jobId, teacherId } },
+        data: {
+          status: dto.status as ApplicationStatus,
+          statusUpdatedAt: new Date(),
+        },
+        include: { teacher: true },
+      });
 
-  return updatedApplication;
-}
+      await this.prisma.notification.create({
+        data: {
+          teacherId: teacherId,
+          userType: 'TEACHER',
+          type: 'APPLICATION_STATUS',
+          title: `Your application has been ${dto.status}`,
+          message: `Your application for the job "${application.job.title}" is now ${dto.status}`,
+          data: {
+            jobId,
+            applicationId: application.id,
+            newStatus: dto.status,
+          },
+          isRead: false,
+        },
+      });
 
-
+      return updatedApplication;
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
 }
