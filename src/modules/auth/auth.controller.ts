@@ -744,7 +744,7 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getProfile(@Req() req: Request): UserProfile {
+  getProfile(@Req() req: any): UserProfile {
     const user = req.user as UserProfile;
     this.logger.log(`Profile accessed for user: ${user.id}`);
     return user;
