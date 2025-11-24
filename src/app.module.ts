@@ -16,6 +16,7 @@ import { LikeModule } from './modules/social/like/like.module';
 import { CommentsModule } from './modules/social/comment/comments.module';
 import { EndorsementsModule } from './modules/social/endorsement/endorsements.module';
 import { ReportModule } from './modules/report/report.module';
+import { OrganizationModule } from './modules/organization/organization.module';
 @Module({
   imports: [
     ThrottlerModule.forRoot([
@@ -39,7 +40,8 @@ import { ReportModule } from './modules/report/report.module';
     LikeModule,
     CommentsModule,
     EndorsementsModule,
-    ReportModule
+    ReportModule,
+    OrganizationModule
   ],
   controllers: [AppController],
   providers: [AppService],
