@@ -22,6 +22,7 @@
     "prisma:migrate-dev": "prisma migrate dev --schema ./src/database/prisma/schema",
     "prisma:migrate-deploy": "prisma migrate dev --schema ./src/database/prisma/schema",
     "prisma:generate": "prisma generate --schema ./src/database/prisma/schema",
+    "prisma:reset": "prisma migrate reset --schema ./src/database/prisma/schema",
     "seed": "ts-node ./src/database/prisma/seeds/admin.seed.ts"
   },
   "dependencies": {
