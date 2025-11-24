@@ -596,7 +596,7 @@ export class AuthController {
   })
   async changePassword(
     @Body() changePasswordDto: ChangePasswordDto,
-    @Req() req: Request,
+    @Req() req: any,
   ): Promise<{ message: string }> {
     try {
       const user = req.user as UserProfile;
