@@ -134,35 +134,64 @@ export class SchoolService {
     }
   }
 
-  async getJobs(
-    schoolId: string,
-    page = 1,
-    limit = 10,
-    filters?: Partial<{
-      title: string;
-      subjects: string[];
-      gradeLevels: string[];
-    }>,
-  ) {
-    try {
-      const where: any = { schoolId };
-      if (filters?.title)
-        where.title = { contains: filters.title, mode: 'insensitive' };
-      if (filters?.subjects) where.subjects = { hasSome: filters.subjects };
-      if (filters?.gradeLevels)
-        where.gradeLevels = { hasSome: filters.gradeLevels };
+async getJobs(
+  schoolId?: string,   
+  page = 1,
+  limit = 10,
+  filters?: Partial<{
+    title: string;
+    subjects: string[];
+    gradeLevels: string[];
+  }>,
+) {
+  try {
+    const where: any = {};
 
-      const jobs = await this.prisma.job.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-      });
-      const total = await this.prisma.job.count({ where });
-      return { total, page, limit, jobs };
-    } catch (error) {
-      handlePrismaError(error);
+    // Apply school filter only when provided
+    if (schoolId) where.schoolId = schoolId;
+
+    // Apply filters
+    if (filters?.title) {
+      where.title = { contains: filters.title, mode: 'insensitive' };
     }
+
+    if (filters?.subjects) {
+      where.subjects = { hasSome: filters.subjects };
+    }
+
+    if (filters?.gradeLevels) {
+      where.gradeLevels = { hasSome: filters.gradeLevels };
+    }
+
+    const jobs = await this.prisma.job.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        school: {
+          select: {
+            name: true,
+           
+            logoUrl: true,
+          },
+        },
+        _count: {
+          select: { applications: true },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const total = await this.prisma.job.count({ where });
+
+    return { total, page, limit, jobs };
+  } catch (error) {
+    handlePrismaError(error);
   }
+}
+
 
   // =======================
   // Teacher Job Application
