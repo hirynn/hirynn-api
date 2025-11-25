@@ -81,29 +81,15 @@ export class SchoolController {
     return this.schoolService.deleteJob(id);
   }
 @Roles('SCHOOL_ADMIN')
-@Get('jobs')
-getJobs(@Query() query: any) {
-  const {
-    schoolId,     
-    page = 1,
-    limit = 10,
-    title,
-    subjects,
-    gradeLevels,
-  } = query;
-
-  return this.schoolService.getJobs(
-    schoolId,               
-    Number(page),
-    Number(limit),
-    {
-      title,
-      subjects: subjects ? [].concat(subjects) : undefined,
-      gradeLevels: gradeLevels ? [].concat(gradeLevels) : undefined,
-    },
-  );
-}
-
+  @Get('job/:schoolId') getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
+    const { page = 1, limit = 10, title, subjects, gradeLevels } = query;
+    return this.schoolService.getJobs(
+      schoolId,
+      Number(page),
+      Number(limit),
+      { title, subjects, gradeLevels }
+    );
+  }
 
   /** Applications Handling */
   @UseGuards(JwtAuthGuard, RolesGuard)
