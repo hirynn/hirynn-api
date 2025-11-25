@@ -91,7 +91,7 @@ export class SchoolController {
     );
   }
 
-  /** Applications Handling */
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('TEACHER')
   @Post('job/:jobId/apply')
