@@ -167,7 +167,7 @@ export class SchoolService {
   // =======================
   // Teacher Job Application
   // =======================
-  async applyToJob(teacherId: string, jobId: string, coverLetter?: string) {
+  async applyToJob(teacherId: string?, jobId: string, coverLetter?: string) {
     try {
       const job = await this.prisma.job.findUnique({ where: { id: jobId } });
       if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
