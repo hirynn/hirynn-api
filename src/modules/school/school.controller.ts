@@ -80,6 +80,13 @@ export class SchoolController {
   deleteJob(@Param('id') id: string) {
     return this.schoolService.deleteJob(id);
   }
+  @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('SCHOOL_ADMIN')
+@Get('job/:id')
+getJob(@Param('id') id: string) {
+  return this.schoolService.getJobById(id);
+}
+
 @Roles('SCHOOL_ADMIN')
   @Get('job/:schoolId') getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
     const { page = 1, limit = 10, title, subjects, gradeLevels } = query;
