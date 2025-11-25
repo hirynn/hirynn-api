@@ -80,6 +80,42 @@ export class SchoolController {
   deleteJob(@Param('id') id: string) {
     return this.schoolService.deleteJob(id);
   }
+@Roles('SCHOOL_ADMIN')
+@Get('jobs')
+getJobs(@Query() query: any) {
+  const {
+    schoolId,     
+    page = 1,
+    limit = 10,
+    title,
+    subjects,
+    gradeLevels,
+  } = query;
+
+  return this.schoolService.getJobs(
+    schoolId,               
+    Number(page),
+    Number(limit),
+    {
+      title,
+      subjects: subjects ? [].concat(subjects) : undefined,
+      gradeLevels: gradeLevels ? [].concat(gradeLevels) : undefined,
+    },
+  );
+}
+
+    /** Applications Handling */
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('TEACHER')
+@Post('job/:jobId/apply')
+applyJob(
+  @Param('jobId') jobId: string,
+  @Body() body: { coverLetter?: string },
+  @Req() req
+) {
+  const teacherId = req.user.id; // comes from JWT
+  return this.schoolService.applyToJob(teacherId, jobId, body.coverLetter);
+}
   @Get('job/:schoolId')
   getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
     const { page = 1, limit = 10, title, subjects, gradeLevels } = query;
