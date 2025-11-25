@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
@@ -167,10 +171,20 @@ export class SchoolService {
   // =======================
   // Teacher Job Application
   // =======================
-  async applyToJob(teacherId: string?, jobId: string, coverLetter?: string) {
+  async applyToJob(teacherId: string, jobId: string, coverLetter?: string) {
     try {
       const job = await this.prisma.job.findUnique({ where: { id: jobId } });
       if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
+
+      if (teacherId.trim().length === 0) {
+        return await this.prisma.jobApplication.create({
+          data: {
+            jobId,
+            coverLetter: coverLetter ?? null,
+            status: ApplicationStatus.SUBMITTED,
+          },
+        });
+      }
 
       const existing = await this.prisma.jobApplication.findUnique({
         where: { jobId_teacherId: { jobId, teacherId } },
@@ -215,7 +229,9 @@ export class SchoolService {
         include: { teacher: true },
       });
 
-      const total = await this.prisma.jobApplication.count({ where: { jobId } });
+      const total = await this.prisma.jobApplication.count({
+        where: { jobId },
+      });
 
       return { total, page, limit, applications };
     } catch (error) {

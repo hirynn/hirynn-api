@@ -108,7 +108,7 @@ export class SchoolController {
     @Body() body: { coverLetter?: string },
     @Req() req,
   ) {
-    return this.schoolService.applyToJob(teacherId, jobId, body.coverLetter);
+    return this.schoolService.applyToJob("", jobId, body.coverLetter);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
