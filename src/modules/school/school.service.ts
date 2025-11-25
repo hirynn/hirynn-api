@@ -127,6 +127,18 @@ export class SchoolService {
       throw new NotFoundException(`Job with id ${jobId} not found`);
     }
   }
+async getJobById(jobId: string) {
+  try {
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    if (!job) {
+      throw new NotFoundException(`Job with id ${jobId} not found`);
+    }
+    return job;
+  } catch (error) {
+    handlePrismaError(error);
+    throw new NotFoundException(`Job with id ${jobId} not found`);
+  }
+}
 
   async deleteJob(jobId: string) {
     try {
