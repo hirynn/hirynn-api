@@ -11,6 +11,7 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { EmploymentType, Prisma, ApplicationStatus } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { CreateAnonymousApplicationDto } from './dto/CreateAnonymousApplicationDto';
 
 @Injectable()
 export class SchoolService {
@@ -196,42 +197,95 @@ export class SchoolService {
   // =======================
   // Teacher Job Application
   // =======================
-  async applyToJob(teacherId: string, jobId: string, coverLetter?: string) {
-    try {
-      const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-      if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
+async applyToJob(dto: {
+  teacherId?: string;
+  jobId: string;
+  coverLetter?: string;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  resumeUrl?: string;
+  yearsExperience?: number;
+  expectedSalary?: number;
+  location?: string;
+  currentCompany?: string;
+  portfolioLink?: string;
+}) {
+  const {
+    teacherId,
+    jobId,
+    coverLetter,
+    fullName,
+    email,
+    phone,
+    resumeUrl,
+    yearsExperience,
+    expectedSalary,
+    location,
+    currentCompany,
+    portfolioLink,
+  } = dto;
 
-      if (teacherId.trim().length === 0) {
-        return await this.prisma.jobApplication.create({
-          data: {
-            jobId,
-            coverLetter: coverLetter ?? null,
-            status: ApplicationStatus.SUBMITTED,
-          },
-        });
-      }
+  try {
+ 
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
+
+    if (teacherId) {
+  
+      const teacher = await this.prisma.teacher.findUnique({ where: { id: teacherId } });
+      if (!teacher) throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+
 
       const existing = await this.prisma.jobApplication.findUnique({
         where: { jobId_teacherId: { jobId, teacherId } },
       });
-      if (existing) {
-        throw new BadRequestException('You have already applied to this job');
-      }
+      if (existing) throw new BadRequestException('You have already applied to this job');
 
-      return await this.prisma.jobApplication.create({
+      return this.prisma.jobApplication.create({
         data: {
           jobId,
           teacherId,
           coverLetter: coverLetter ?? null,
           status: ApplicationStatus.SUBMITTED,
+          fullName: teacher.name,
+          email: teacher.email,
+          phone: teacher.phone,
+          resumeUrl: teacher.resumeUrl,
+       
         },
       });
-    } catch (error) {
-      handlePrismaError(error);
-    }
-  }
+    } else {
+      // --- Anonymous application ---
+      if (!fullName || !email) {
+        throw new BadRequestException('Full name and email are required for anonymous application');
+      }
 
-  async getApplicants(jobId: string, page = 1, limit = 10) {
+      return this.prisma.jobApplicationAnonymous.create({
+        data: {
+          jobId,
+          fullName,
+          email,
+          phone,
+          coverLetter,
+          resumeUrl,
+          yearsExperience,
+          expectedSalary,
+          location,
+          currentCompany,
+          portfolioLink,
+          status: ApplicationStatus.SUBMITTED,
+        },
+      });
+    }
+  } catch (error) {
+    handlePrismaError(error);
+  }
+}
+
+
+
+  /*async getApplicants(jobId: string, page = 1, limit = 10) {
     try {
       const job = await this.prisma.job.findUnique({ where: { id: jobId } });
       if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
@@ -262,7 +316,78 @@ export class SchoolService {
     } catch (error) {
       handlePrismaError(error);
     }
+  }*/
+ async getApplicants(jobId: string, page = 1, limit = 10) {
+  const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+  if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
+
+  // Update all SUBMITTED → VIEWED
+  await this.prisma.$transaction([
+    this.prisma.jobApplication.updateMany({
+      where: { jobId, status: ApplicationStatus.SUBMITTED },
+      data: { status: ApplicationStatus.VIEWED, statusUpdatedAt: new Date() },
+    }),
+    this.prisma.jobApplicationAnonymous.updateMany({
+      where: { jobId, status: ApplicationStatus.SUBMITTED },
+      data: { status: ApplicationStatus.VIEWED, statusUpdatedAt: new Date() },
+    }),
+  ]);
+
+  // Fetch all normal applicants
+  const normalApps = await this.prisma.jobApplication.findMany({
+    where: { jobId },
+    include: { teacher: true },
+  });
+
+  // Fetch all anonymous applicants
+  const anonymousApps = await this.prisma.jobApplicationAnonymous.findMany({
+    where: { jobId },
+  });
+
+  // Merge & tag type
+  const allApps = [
+    ...normalApps.map(a => ({ ...a, type: 'NORMAL' })),
+    ...anonymousApps.map(a => ({ ...a, type: 'ANONYMOUS' })),
+  ];
+
+  // Sort by appliedAt descending
+  allApps.sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
+
+  // Apply pagination
+  const start = (page - 1) * limit;
+  const paginatedApps = allApps.slice(start, start + limit);
+
+  return {
+    total: allApps.length,
+    page,
+    limit,
+    applications: paginatedApps,
+  };
+}
+
+async applyToJobAnonymous(jobId: string, dto: CreateAnonymousApplicationDto) {
+ 
+  const  {...rest } = dto;
+
+  const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+
+  if (!job) {
+    throw new NotFoundException(`Job with id ${jobId} not found`);
   }
+
+  // Create anonymous application
+  const application = await this.prisma.jobApplicationAnonymous.create({
+    data: {
+      jobId,   
+      ...rest,
+    },
+  });
+
+  return {
+    message: 'Application submitted successfully',
+    application,
+  };
+}
 
   async updateApplicationStatus(
     jobId: string,
