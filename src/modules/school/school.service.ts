@@ -76,6 +76,19 @@ export class SchoolService {
     }
   }
 
+  async getSchoolById(id: string, adminId: string) {
+    try {
+      return await this.prisma.school.findFirst({
+        where: {
+          id,
+          schoolAdminId: adminId,
+        },
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
   // =======================
   // Job CRUD
   // =======================
@@ -127,18 +140,18 @@ export class SchoolService {
       throw new NotFoundException(`Job with id ${jobId} not found`);
     }
   }
-async getJobById(jobId: string) {
-  try {
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-    if (!job) {
+  async getJobById(jobId: string) {
+    try {
+      const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+      if (!job) {
+        throw new NotFoundException(`Job with id ${jobId} not found`);
+      }
+      return job;
+    } catch (error) {
+      handlePrismaError(error);
       throw new NotFoundException(`Job with id ${jobId} not found`);
     }
-    return job;
-  } catch (error) {
-    handlePrismaError(error);
-    throw new NotFoundException(`Job with id ${jobId} not found`);
   }
-}
 
   async deleteJob(jobId: string) {
     try {
@@ -150,7 +163,7 @@ async getJobById(jobId: string) {
     }
   }
 
- async getJobs(
+  async getJobs(
     schoolId: string,
     page = 1,
     limit = 10,
@@ -176,8 +189,9 @@ async getJobById(jobId: string) {
       const total = await this.prisma.job.count({ where });
       return { total, page, limit, jobs };
     } catch (error) {
-      handlePrismaError(error);}}
-
+      handlePrismaError(error);
+    }
+  }
 
   // =======================
   // Teacher Job Application
