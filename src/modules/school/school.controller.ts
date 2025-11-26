@@ -82,13 +82,14 @@ export class SchoolController {
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
-  @Get('job/:id')
+  @Get('jobDetails/:id')
   getJob(@Param('id') id: string) {
     return this.schoolService.getJobById(id);
   }
 
   @Get('job/:schoolId')
   getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
+    console.log("SCHOOL ID::", schoolId);
     const { page = 1, limit = 10, title, subjects, gradeLevels } = query;
     return this.schoolService.getJobs(schoolId, Number(page), Number(limit), {
       title,
