@@ -81,23 +81,21 @@ export class SchoolController {
     return this.schoolService.deleteJob(id);
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('SCHOOL_ADMIN')
-@Get('job/:id')
-getJob(@Param('id') id: string) {
-  return this.schoolService.getJobById(id);
-}
-
-@Roles('SCHOOL_ADMIN')
-  @Get('job/:schoolId') getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
-    const { page = 1, limit = 10, title, subjects, gradeLevels } = query;
-    return this.schoolService.getJobs(
-      schoolId,
-      Number(page),
-      Number(limit),
-      { title, subjects, gradeLevels }
-    );
+  @Roles('SCHOOL_ADMIN')
+  @Get('job/:id')
+  getJob(@Param('id') id: string) {
+    return this.schoolService.getJobById(id);
   }
 
+  @Get('job/:schoolId')
+  getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
+    const { page = 1, limit = 10, title, subjects, gradeLevels } = query;
+    return this.schoolService.getJobs(schoolId, Number(page), Number(limit), {
+      title,
+      subjects,
+      gradeLevels,
+    });
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('TEACHER')
@@ -117,7 +115,7 @@ getJob(@Param('id') id: string) {
     @Body() body: { coverLetter?: string },
     @Req() req,
   ) {
-    return this.schoolService.applyToJob("", jobId, body.coverLetter);
+    return this.schoolService.applyToJob('', jobId, body.coverLetter);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
