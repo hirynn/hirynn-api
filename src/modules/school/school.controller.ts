@@ -60,6 +60,13 @@ export class SchoolController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCHOOL_ADMIN')
+  @Get(':id')
+  getSchoolById(@Req() req, @Param('id') id: string) {
+    return this.schoolService.getSchoolById(id, req.user.id);
+  }
+
   /** Job CRUD */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
@@ -89,7 +96,7 @@ export class SchoolController {
 
   @Get('job/:schoolId')
   getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
-    console.log("SCHOOL ID::", schoolId);
+    console.log('SCHOOL ID::', schoolId);
     const { page = 1, limit = 10, title, subjects, gradeLevels } = query;
     return this.schoolService.getJobs(schoolId, Number(page), Number(limit), {
       title,
