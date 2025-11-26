@@ -20,6 +20,7 @@ import { UpdateApplicationDto } from './dto/update-application.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CreateAnonymousApplicationDto } from './dto/CreateAnonymousApplicationDto';
 @Controller('school')
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
@@ -105,26 +106,25 @@ export class SchoolController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('TEACHER')
-  @Post('job/:jobId/apply')
-  applyJob(
-    @Param('jobId') jobId: string,
-    @Body() body: { coverLetter?: string },
-    @Req() req,
-  ) {
-    const teacherId = req.user.id; // comes from JWT
-    return this.schoolService.applyToJob(teacherId, jobId, body.coverLetter);
-  }
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('TEACHER')
+@Post('job/:jobId/apply')
+applyJob(
+  @Param('jobId') jobId: string,
+  @Body() body: { coverLetter?: string },
+  @Req() req,
+) {
+  const teacherId = req.user?.id; 
+  return this.schoolService.applyToJob({ teacherId, jobId, coverLetter: body.coverLetter });
+}
 
-  @Post('job/:jobId/applyAnonymous')
-  applyJobAnonymous(
-    @Param('jobId') jobId: string,
-    @Body() body: { coverLetter?: string },
-    @Req() req,
-  ) {
-    return this.schoolService.applyToJob('', jobId, body.coverLetter);
-  }
+@Post('job/:jobId/applyAnonymous')
+applyJobAnonymous(
+  @Param('jobId') jobId: string,
+  @Body() dto: CreateAnonymousApplicationDto,
+) {
+  return this.schoolService.applyToJobAnonymous(jobId, dto);
+}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
