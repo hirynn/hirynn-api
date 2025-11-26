@@ -58,6 +58,28 @@ model JobApplication {
   @@map("job_applications")
 }
 
+model JobApplicationAnonymous {
+  id              String            @id @default(cuid())
+  jobId           String            @map("job_id")
+  teacherId       String?            @map("teacher_id")
+  status          ApplicationStatus @default(SUBMITTED)
+  coverLetter     String?           @map("cover_letter") @db.Text
+  appliedAt       DateTime          @default(now()) @map("applied_at") @db.Timestamptz
+  statusUpdatedAt DateTime          @default(now()) @map("status_updated_at") @db.Timestamptz
+
+  // Relations
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, teacherId])
+  // Indexes
+  @@index([jobId])
+  @@index([teacherId])
+  @@index([status])
+  @@index([appliedAt])
+  @@map("job_applications")
+}
+
 model SavedJob {
   id        String   @id @default(cuid())
   teacherId String   @map("teacher_id")
