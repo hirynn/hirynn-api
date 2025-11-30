@@ -89,6 +89,39 @@ export class SchoolService {
       handlePrismaError(error);
     }
   }
+async getTeacherById(teacherId: string, isPublic = true) {
+  try {
+const teacher = await this.prisma.teacher.findUnique({
+  where: { id: teacherId },
+  select: {
+    id: true,
+    name: true,
+    profilePhotoUrl: true,
+    bio: true,
+    subjectsTaught: true,
+    gradeLevels: true,
+    currentSchool: true,
+    location: true,
+    demoVideos: true,
+    certifications: true,
+    education: true,
+    endorsementsGiven: true,
+    endorsementsReceived: true,
+    followers: true,
+    following: true,
+    savedJobs: true,
+    posts: true,
+  },
+});
+
+
+    if (!teacher) throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+
+    return teacher;
+  } catch (err) {
+    handlePrismaError(err);
+  }
+}
 
   // =======================
   // Job CRUD
