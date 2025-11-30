@@ -10,6 +10,7 @@ import {
   Query,
   Req,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { SchoolService } from './school.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
@@ -60,6 +61,26 @@ export class SchoolController {
       },
     );
   }
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCHOOL_ADMIN')
+  @Get(':id')
+  async getTeacherById(
+    @Param('id') id: string,
+
+  ) {
+    try {
+      const teacher = await this.schoolService.getTeacherById(
+        id,
+      );
+      return teacher;
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        throw err;
+      }
+      // You can also handle other errors here
+      throw err;
+    }
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
@@ -106,25 +127,29 @@ export class SchoolController {
     });
   }
 
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('TEACHER')
-@Post('job/:jobId/apply')
-applyJob(
-  @Param('jobId') jobId: string,
-  @Body() body: { coverLetter?: string },
-  @Req() req,
-) {
-  const teacherId = req.user?.id; 
-  return this.schoolService.applyToJob({ teacherId, jobId, coverLetter: body.coverLetter });
-}
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('TEACHER')
+  @Post('job/:jobId/apply')
+  applyJob(
+    @Param('jobId') jobId: string,
+    @Body() body: { coverLetter?: string },
+    @Req() req,
+  ) {
+    const teacherId = req.user?.id;
+    return this.schoolService.applyToJob({
+      teacherId,
+      jobId,
+      coverLetter: body.coverLetter,
+    });
+  }
 
-@Post('job/:jobId/applyAnonymous')
-applyJobAnonymous(
-  @Param('jobId') jobId: string,
-  @Body() dto: CreateAnonymousApplicationDto,
-) {
-  return this.schoolService.applyToJobAnonymous(jobId, dto);
-}
+  @Post('job/:jobId/applyAnonymous')
+  applyJobAnonymous(
+    @Param('jobId') jobId: string,
+    @Body() dto: CreateAnonymousApplicationDto,
+  ) {
+    return this.schoolService.applyToJobAnonymous(jobId, dto);
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
