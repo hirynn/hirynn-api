@@ -11,6 +11,11 @@ import {
   Req,
   UseGuards,
   NotFoundException,
+  FileTypeValidator,
+  MaxFileSizeValidator,
+  UploadedFile,
+  ParseFilePipe,
+  UseInterceptors,
 } from '@nestjs/common';
 import { SchoolService } from './school.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
@@ -22,6 +27,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CreateAnonymousApplicationDto } from './dto/CreateAnonymousApplicationDto';
+import { FileInterceptor } from '@nestjs/platform-express';
 @Controller('school')
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
@@ -61,6 +67,7 @@ export class SchoolController {
       },
     );
   }
+  
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
   @Get(':id')
@@ -142,13 +149,24 @@ export class SchoolController {
       coverLetter: body.coverLetter,
     });
   }
-
   @Post('job/:jobId/applyAnonymous')
-  applyJobAnonymous(
+  @UseInterceptors(FileInterceptor('file'))
+  async applyJobAnonymous(
     @Param('jobId') jobId: string,
-    @Body() dto: CreateAnonymousApplicationDto,
+    @Body() dto: Partial<CreateAnonymousApplicationDto>,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType: /(pdf|doc|docx|application\/pdf|application\/msword|application\/vnd.openxmlformats-officedocument.wordprocessingml.document)$/i,
+          }),
+        ],
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
-    return this.schoolService.applyToJobAnonymous(jobId, dto);
+    return this.schoolService.applyToJobAnonymous(jobId, dto, file);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
