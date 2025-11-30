@@ -1,4 +1,4 @@
-// All enum definitions
+
 enum AdminRole {
   SUPER_ADMIN
   MODERATOR

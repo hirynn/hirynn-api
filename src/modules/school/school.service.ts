@@ -12,10 +12,11 @@ import { UpdateApplicationDto } from './dto/update-application.dto';
 import { EmploymentType, Prisma, ApplicationStatus } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import { CreateAnonymousApplicationDto } from './dto/CreateAnonymousApplicationDto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class SchoolService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private cloudinaryService: CloudinaryService) {}
 
   // =======================
   // School CRUD
@@ -397,22 +398,35 @@ async applyToJob(dto: {
     applications: paginatedApps,
   };
 }
-
-async applyToJobAnonymous(jobId: string, dto: CreateAnonymousApplicationDto) {
- 
-  const  {...rest } = dto;
-
+async uploadAnonymousResume(file: Express.Multer.File) {
+  const { url } = await this.cloudinaryService.uploadFile(file, 'resumes/anonymous');
+  return {
+    resumeUrl: url,
+  };
+}
+async applyToJobAnonymous(jobId: string, dto: Partial<CreateAnonymousApplicationDto>, file?: Express.Multer.File) {
   const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+  if (!job) throw new NotFoundException(`Job with id ${jobId} not found`);
 
-  if (!job) {
-    throw new NotFoundException(`Job with id ${jobId} not found`);
+  let resumeUrl = dto.resumeUrl;
+  if (file) {
+    const upload = await this.uploadAnonymousResume(file);
+    resumeUrl = upload.resumeUrl;
   }
 
-  // Create anonymous application
   const application = await this.prisma.jobApplicationAnonymous.create({
     data: {
-      jobId,   
-      ...rest,
+      jobId,
+      fullName: dto.fullName || 'Anonymous User',
+      email: dto.email || `anonymous${Date.now()}@noemail.com`,
+      resumeUrl,
+      phone: dto.phone,
+      yearsExperience: dto.yearsExperience,
+      expectedSalary: dto.expectedSalary,
+      location: dto.location,
+      currentCompany: dto.currentCompany,
+      coverLetter: dto.coverLetter,
+      portfolioLink: dto.portfolioLink,
     },
   });
 
