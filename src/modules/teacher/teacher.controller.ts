@@ -197,7 +197,7 @@ export class TeacherController {
     return this.teacherService.remove(id);
   }
 
-  //resume
+  //resumehai
  @Post('resume')
 @UseInterceptors(FileInterceptor('file'))
 async uploadResume(
