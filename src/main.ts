@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
+import * as bodyParser from 'body-parser'; 
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,6 +16,10 @@ async function bootstrap() {
       errorHttpStatusCode: 400, // set error code for validation errors
     }),
   );
+    app.use(bodyParser.json());
+
+  // Parse URL-encoded data (like express.urlencoded)
+  app.use(bodyParser.urlencoded({ extended: true }));
   app.use(cookieParser())
 
   const port = process.env.PORT ?? 8000;
