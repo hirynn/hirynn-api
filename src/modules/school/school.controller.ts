@@ -26,7 +26,7 @@ import { UpdateApplicationDto } from './dto/update-application.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { CreateAnonymousApplicationDto } from './dto/CreateAnonymousApplicationDto';
+import { CreateAnonymousApplicationDto, CVSubmissionDto } from './dto/CreateAnonymousApplicationDto';
 import { FileInterceptor } from '@nestjs/platform-express';
 @Controller('school')
 export class SchoolController {
@@ -67,18 +67,13 @@ export class SchoolController {
       },
     );
   }
-  
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
   @Get(':id')
-  async getTeacherById(
-    @Param('id') id: string,
-
-  ) {
+  async getTeacherById(@Param('id') id: string) {
     try {
-      const teacher = await this.schoolService.getTeacherById(
-        id,
-      );
+      const teacher = await this.schoolService.getTeacherById(id);
       return teacher;
     } catch (err) {
       if (err instanceof NotFoundException) {
@@ -159,7 +154,8 @@ export class SchoolController {
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
           new FileTypeValidator({
-            fileType: /(pdf|doc|docx|application\/pdf|application\/msword|application\/vnd.openxmlformats-officedocument.wordprocessingml.document)$/i,
+            fileType:
+              /(pdf|doc|docx|application\/pdf|application\/msword|application\/vnd.openxmlformats-officedocument.wordprocessingml.document)$/i,
           }),
         ],
       }),
@@ -167,6 +163,26 @@ export class SchoolController {
     file?: Express.Multer.File,
   ) {
     return this.schoolService.applyToJobAnonymous(jobId, dto, file);
+  }
+
+  @Post('/cvSubmission')
+  @UseInterceptors(FileInterceptor('file'))
+  async submitCV(
+    @Body() dto: Partial<CVSubmissionDto>,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType:
+              /(pdf|doc|docx|application\/pdf|application\/msword|application\/vnd.openxmlformats-officedocument.wordprocessingml.document)$/i,
+          }),
+        ],
+      }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    return this.schoolService.submitCvAnonymous(dto, file);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
