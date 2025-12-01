@@ -43,3 +43,48 @@ export class CreateAnonymousApplicationDto {
   @IsString()
   portfolioLink?: string;
 }
+
+
+export class CVSubmissionDto {
+  @IsNotEmpty()
+  @IsString()
+  fullName: string;
+
+  @IsOptional()
+  @IsEmail()
+  email: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  resumeUrl?: string;
+
+  @IsOptional()
+  @IsNumber()
+  yearsExperience?: number;
+
+  @IsOptional()
+  @IsNumber()
+  expectedSalary?: number;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
+  
+  @IsOptional()
+  @IsString()
+  currentCompany: string;
+
+  @IsOptional()
+  @IsString()
+  coverLetter?: string;
+
+  @IsOptional()
+  @IsString()
+  portfolioLink?: string;
+}
+
+
