@@ -56,8 +56,8 @@ model JobApplication {
   currentCompany  String?
   portfolioLink   String?
   // Relations
-  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  job             Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  teacher         Teacher?          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, teacherId])
   // Indexes
@@ -113,21 +113,23 @@ model SavedJob {
 }
 
 model CVSubmission {
-  id    String @id @default(cuid())
+  id String @id @default(cuid())
 
-  fullName        String            @map("full_name")
-  email           String            @map("email")
-  phone           String?           @map("phone")
-  resumeUrl       String?           @map("resume_url")
-  yearsExperience Int?              @map("years_experience")
-  expectedSalary  Int?              @map("expected_salary")
-  location        String?           @map("location")
+  schoolId String @map("school_id")
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  fullName        String   @map("full_name")
+  email           String   @map("email")
+  phone           String?  @map("phone")
+  resumeUrl       String?  @map("resume_url")
+  yearsExperience Int?     @map("years_experience")
+  expectedSalary  Int?     @map("expected_salary")
+  location        String?  @map("location")
   currentCompany  String?
-  coverLetter     String?           @map("cover_letter") @db.Text
-  appliedAt       DateTime          @default(now()) @map("applied_at") @db.Timestamptz
+  coverLetter     String?  @map("cover_letter") @db.Text
+  appliedAt       DateTime @default(now()) @map("applied_at") @db.Timestamptz
   portfolioLink   String?
 
   @@index([appliedAt])
   @@map("cvsubmission")
 }
-
