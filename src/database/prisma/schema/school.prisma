@@ -48,6 +48,8 @@ model School {
   schoolAdmin SchoolAdmin @relation(fields: [schoolAdminId], references: [id], onDelete: Cascade)
   jobs        Job[]
 
+  cvSubmissions CVSubmission[]
+
   // Indexes
   @@index([schoolAdminId])
   @@index([name])
