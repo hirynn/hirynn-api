@@ -459,7 +459,7 @@ export class SchoolService {
 
     const cvSubmission = await this.prisma.cVSubmission.create({
       data: {
-        schoolId: dto.schoolId,
+        schoolId: dto.schoolId || "",
         fullName: dto.fullName || 'Anonymous User',
         email: dto.email || `anonymous${Date.now()}@noemail.com`,
         resumeUrl,
