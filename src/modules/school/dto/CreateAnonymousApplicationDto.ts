@@ -44,8 +44,11 @@ export class CreateAnonymousApplicationDto {
   portfolioLink?: string;
 }
 
-
 export class CVSubmissionDto {
+  @IsNotEmpty()
+  @IsString()
+  schoolId: string;
+
   @IsNotEmpty()
   @IsString()
   fullName: string;
@@ -73,7 +76,7 @@ export class CVSubmissionDto {
   @IsOptional()
   @IsString()
   location?: string;
-  
+
   @IsOptional()
   @IsString()
   currentCompany: string;
@@ -86,5 +89,3 @@ export class CVSubmissionDto {
   @IsString()
   portfolioLink?: string;
 }
-
-
