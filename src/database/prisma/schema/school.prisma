@@ -15,7 +15,7 @@ model SchoolAdmin {
   resetToken   String?
 
   // Relations
-  schools         School[]
+  schools         Organization[]
   notifications   Notification[]
   reportsReporter Report[]       @relation("SchoolAdminReporterRelation")
   reportsReported Report[]       @relation("ReportedSchoolAdminRelation")
@@ -28,7 +28,7 @@ model SchoolAdmin {
   @@map("school_admins")
 }
 
-model School {
+model Organization {
   id            String   @id @default(cuid())
   schoolAdminId String   @map("school_admin_id")
   name          String   @db.VarChar(200)
