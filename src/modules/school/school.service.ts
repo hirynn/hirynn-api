@@ -11,7 +11,10 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { EmploymentType, Prisma, ApplicationStatus } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
-import { CreateAnonymousApplicationDto, CVSubmissionDto } from './dto/CreateAnonymousApplicationDto';
+import {
+  CreateAnonymousApplicationDto,
+  CVSubmissionDto,
+} from './dto/CreateAnonymousApplicationDto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
@@ -26,7 +29,7 @@ export class SchoolService {
   // =======================
   async createSchool(adminId: string, dto: CreateSchoolDto) {
     try {
-      return await this.prisma.school.create({
+      return await this.prisma.organization.create({
         data: { ...dto, schoolAdminId: adminId },
       });
     } catch (error) {
@@ -36,7 +39,7 @@ export class SchoolService {
 
   async updateSchool(schoolId: string, dto: UpdateSchoolDto) {
     try {
-      return await this.prisma.school.update({
+      return await this.prisma.organization.update({
         where: { id: schoolId },
         data: dto,
       });
@@ -48,7 +51,7 @@ export class SchoolService {
 
   async deleteSchool(schoolId: string) {
     try {
-      await this.prisma.school.delete({ where: { id: schoolId } });
+      await this.prisma.organization.delete({ where: { id: schoolId } });
       return { message: 'School deleted successfully' };
     } catch (error) {
       handlePrismaError(error);
@@ -69,12 +72,12 @@ export class SchoolService {
       if (filters?.isVerified !== undefined)
         where.isVerified = filters.isVerified;
 
-      const schools = await this.prisma.school.findMany({
+      const schools = await this.prisma.organization.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
       });
-      const total = await this.prisma.school.count({ where });
+      const total = await this.prisma.organization.count({ where });
       return { total, page, limit, schools };
     } catch (error) {
       handlePrismaError(error);
@@ -83,7 +86,7 @@ export class SchoolService {
 
   async getSchoolById(id: string, adminId: string) {
     try {
-      return await this.prisma.school.findFirst({
+      return await this.prisma.organization.findFirst({
         where: {
           id,
           schoolAdminId: adminId,
@@ -450,7 +453,6 @@ export class SchoolService {
     dto: Partial<CVSubmissionDto>,
     file?: Express.Multer.File,
   ) {
-
     let resumeUrl = dto.resumeUrl;
     if (file) {
       const upload = await this.uploadAnonymousResume(file);
@@ -459,7 +461,7 @@ export class SchoolService {
 
     const cvSubmission = await this.prisma.cVSubmission.create({
       data: {
-        schoolId: dto.schoolId || "",
+        schoolId: dto.schoolId || '',
         fullName: dto.fullName || 'Anonymous User',
         email: dto.email || `anonymous${Date.now()}@noemail.com`,
         resumeUrl,
