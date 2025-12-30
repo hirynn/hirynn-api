@@ -26,7 +26,10 @@ import { UpdateApplicationDto } from './dto/update-application.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { CreateAnonymousApplicationDto, CVSubmissionDto } from './dto/CreateAnonymousApplicationDto';
+import {
+  CreateAnonymousApplicationDto,
+  CVSubmissionDto,
+} from './dto/CreateAnonymousApplicationDto';
 import { FileInterceptor } from '@nestjs/platform-express';
 @Controller('school')
 export class SchoolController {
@@ -71,6 +74,12 @@ export class SchoolController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SCHOOL_ADMIN')
   @Get(':id')
+  getSchoolById(@Req() req, @Param('id') id: string) {
+    return this.schoolService.getSchoolById(id, req.user.id);
+  }
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SCHOOL_ADMIN')
+  @Get('teacher/:id')
   async getTeacherById(@Param('id') id: string) {
     try {
       const teacher = await this.schoolService.getTeacherById(id);
@@ -82,13 +91,6 @@ export class SchoolController {
       // You can also handle other errors here
       throw err;
     }
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
-  @Get(':id')
-  getSchoolById(@Req() req, @Param('id') id: string) {
-    return this.schoolService.getSchoolById(id, req.user.id);
   }
 
   /** Job CRUD */
@@ -111,13 +113,61 @@ export class SchoolController {
   deleteJob(@Param('id') id: string) {
     return this.schoolService.deleteJob(id);
   }
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+
+  @Get('job/available')
+  getAvailableJobs(
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('sort') sort: 'latest' | 'oldest' = 'latest',
+
+    // Filters
+    @Query('search') search?: string,
+    @Query('title') title?: string,
+    @Query('employmentType') employmentType?: string | string[],
+    @Query('gradeLevels') gradeLevels?: string | string[],
+    @Query('subjects') subjects?: string | string[],
+    @Query('location') location?: string,
+    @Query('experienceMin') experienceMin?: string,
+    @Query('experienceMax') experienceMax?: string,
+  ) {
+    return this.schoolService.getAvailableJobs(
+      Number(page),
+      Number(limit),
+      sort,
+      {
+        search,
+        title,
+        location,
+        employmentType: employmentType
+          ? Array.isArray(employmentType)
+            ? employmentType
+            : [employmentType]
+          : undefined,
+
+        gradeLevels: gradeLevels
+          ? Array.isArray(gradeLevels)
+            ? gradeLevels
+            : [gradeLevels]
+          : undefined,
+
+        subjects: subjects
+          ? Array.isArray(subjects)
+            ? subjects
+            : [subjects]
+          : undefined,
+
+        experienceMin: experienceMin ? Number(experienceMin) : undefined,
+        experienceMax: experienceMax ? Number(experienceMax) : undefined,
+      },
+    );
+  }
+
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles('SCHOOL_ADMIN')
   @Get('jobDetails/:id')
   getJob(@Param('id') id: string) {
     return this.schoolService.getJobById(id);
   }
-
   @Get('job/:schoolId')
   getJobs(@Param('schoolId') schoolId: string, @Query() query: any) {
     console.log('SCHOOL ID::', schoolId);
