@@ -55,5 +55,5 @@ model Organization {
   @@index([name])
   @@index([isVerified])
   @@index([createdAt])
-  @@map("schools")
+  @@map("organizations")
 }
