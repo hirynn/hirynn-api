@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateJobOrganizationDto } from './dto/create-job-organization.dto';
 import { UpdateJobOrganizationDto } from './dto/update-job-organization.dto';
@@ -11,7 +15,7 @@ export class OrganizationService {
   constructor(private prisma: PrismaService) {}
 
   // Generate unique slug
- 
+
   private generateSlug(organizationName: string): string {
     return (
       organizationName
@@ -20,7 +24,7 @@ export class OrganizationService {
         .replace(/^-+|-+$/g, '') +
       '-' +
       Math.random().toString(36).substring(2, 6)
-    ); 
+    );
   }
 
   // Resolve either slug or organizationId
@@ -30,7 +34,7 @@ export class OrganizationService {
       where: {
         OR: [
           { organizationId: orgParam }, // internal ID
-          { slug: orgParam },           // public slug
+          { slug: orgParam }, // public slug
         ],
       },
     });
@@ -42,7 +46,10 @@ export class OrganizationService {
 
   // Create a Job
 
-  async createJob(organizationId: string | undefined, dto: CreateJobOrganizationDto) {
+  async createJob(
+    organizationId: string | undefined,
+    dto: CreateJobOrganizationDto,
+  ) {
     try {
       const slug = dto.slug ?? this.generateSlug(dto.organizationName);
       const finalOrganizationId = organizationId ?? slug;
@@ -61,14 +68,19 @@ export class OrganizationService {
     }
   }
 
- 
   // Update a Job
 
-  async updateJob(orgParam: string, jobId: string, dto: UpdateJobOrganizationDto) {
+  async updateJob(
+    orgParam: string,
+    jobId: string,
+    dto: UpdateJobOrganizationDto,
+  ) {
     try {
       const organizationId = await this.resolveOrganizationId(orgParam);
 
-      const job = await this.prisma.jobOrganization.findUnique({ where: { id: jobId } });
+      const job = await this.prisma.jobOrganization.findUnique({
+        where: { id: jobId },
+      });
       if (!job || job.organizationId !== organizationId) {
         throw new ForbiddenException('You are not allowed to update this job');
       }
@@ -83,14 +95,15 @@ export class OrganizationService {
     }
   }
 
-
   // Delete a Job
 
   async deleteJob(orgParam: string, jobId: string) {
     try {
       const organizationId = await this.resolveOrganizationId(orgParam);
 
-      const job = await this.prisma.jobOrganization.findUnique({ where: { id: jobId } });
+      const job = await this.prisma.jobOrganization.findUnique({
+        where: { id: jobId },
+      });
       if (!job || job.organizationId !== organizationId) {
         throw new ForbiddenException('You are not allowed to delete this job');
       }
@@ -102,7 +115,6 @@ export class OrganizationService {
       throw new NotFoundException(`Job with id ${jobId} not found`);
     }
   }
-
 
   // Get Jobs with filters
 
@@ -116,8 +128,10 @@ export class OrganizationService {
       const organizationId = await this.resolveOrganizationId(orgParam);
 
       const where: any = { organizationId };
-      if (filters?.title) where.title = { contains: filters.title, mode: 'insensitive' };
-      if (filters?.location) where.location = { contains: filters.location, mode: 'insensitive' };
+      if (filters?.title)
+        where.title = { contains: filters.title, mode: 'insensitive' };
+      if (filters?.location)
+        where.location = { contains: filters.location, mode: 'insensitive' };
       if (filters?.isActive !== undefined) where.isActive = filters.isActive;
 
       const jobs = await this.prisma.jobOrganization.findMany({
@@ -133,16 +147,19 @@ export class OrganizationService {
     }
   }
 
- 
   // Get Applicants for a Job
- 
+
   async getApplicants(orgParam: string, jobId: string, page = 1, limit = 10) {
     try {
       const organizationId = await this.resolveOrganizationId(orgParam);
 
-      const job = await this.prisma.jobOrganization.findUnique({ where: { id: jobId } });
+      const job = await this.prisma.jobOrganization.findUnique({
+        where: { id: jobId },
+      });
       if (!job || job.organizationId !== organizationId) {
-        throw new ForbiddenException('You are not allowed to view applicants for this job');
+        throw new ForbiddenException(
+          'You are not allowed to view applicants for this job',
+        );
       }
 
       const applications = await this.prisma.organizationApplication.findMany({
@@ -151,13 +168,14 @@ export class OrganizationService {
         take: limit,
       });
 
-      const total = await this.prisma.organizationApplication.count({ where: { jobId } });
+      const total = await this.prisma.organizationApplication.count({
+        where: { jobId },
+      });
       return { total, page, limit, applications };
     } catch (error) {
       handlePrismaError(error);
     }
   }
-
 
   // Update Application Status
 
@@ -170,12 +188,18 @@ export class OrganizationService {
     try {
       const organizationId = await this.resolveOrganizationId(orgParam);
 
-      const application = await this.prisma.organizationApplication.findUnique({ where: { id: applicationId } });
+      const application = await this.prisma.organizationApplication.findUnique({
+        where: { id: applicationId },
+      });
       if (!application) throw new NotFoundException('Application not found');
 
-      const job = await this.prisma.jobOrganization.findUnique({ where: { id: jobId } });
+      const job = await this.prisma.jobOrganization.findUnique({
+        where: { id: jobId },
+      });
       if (!job || job.organizationId !== organizationId) {
-        throw new ForbiddenException('You are not allowed to update this application');
+        throw new ForbiddenException(
+          'You are not allowed to update this application',
+        );
       }
 
       return await this.prisma.organizationApplication.update({
@@ -186,7 +210,6 @@ export class OrganizationService {
       handlePrismaError(error);
     }
   }
-
 
   // Public Job Application
 
@@ -205,7 +228,9 @@ export class OrganizationService {
       coverLetter?: string;
     },
   ) {
-    const job = await this.prisma.jobOrganization.findUnique({ where: { id: jobId } });
+    const job = await this.prisma.jobOrganization.findUnique({
+      where: { id: jobId },
+    });
     if (!job) throw new NotFoundException('Job not found');
 
     return this.prisma.organizationApplication.create({

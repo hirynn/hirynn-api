@@ -18,7 +18,7 @@ model Job {
   updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  school                School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school                Organization              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   applications          JobApplication[]
   anonymousApplications JobApplicationAnonymous[]
 
@@ -115,8 +115,8 @@ model SavedJob {
 model CVSubmission {
   id String @id @default(cuid())
 
-  schoolId String @map("school_id")
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String       @map("school_id")
+  school   Organization @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   fullName        String   @map("full_name")
   email           String   @map("email")

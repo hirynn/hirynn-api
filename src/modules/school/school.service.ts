@@ -11,7 +11,10 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { EmploymentType, Prisma, ApplicationStatus } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
-import { CreateAnonymousApplicationDto, CVSubmissionDto } from './dto/CreateAnonymousApplicationDto';
+import {
+  CreateAnonymousApplicationDto,
+  CVSubmissionDto,
+} from './dto/CreateAnonymousApplicationDto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
@@ -26,7 +29,7 @@ export class SchoolService {
   // =======================
   async createSchool(adminId: string, dto: CreateSchoolDto) {
     try {
-      return await this.prisma.school.create({
+      return await this.prisma.organization.create({
         data: { ...dto, schoolAdminId: adminId },
       });
     } catch (error) {
@@ -36,7 +39,7 @@ export class SchoolService {
 
   async updateSchool(schoolId: string, dto: UpdateSchoolDto) {
     try {
-      return await this.prisma.school.update({
+      return await this.prisma.organization.update({
         where: { id: schoolId },
         data: dto,
       });
@@ -48,7 +51,7 @@ export class SchoolService {
 
   async deleteSchool(schoolId: string) {
     try {
-      await this.prisma.school.delete({ where: { id: schoolId } });
+      await this.prisma.organization.delete({ where: { id: schoolId } });
       return { message: 'School deleted successfully' };
     } catch (error) {
       handlePrismaError(error);
@@ -69,12 +72,12 @@ export class SchoolService {
       if (filters?.isVerified !== undefined)
         where.isVerified = filters.isVerified;
 
-      const schools = await this.prisma.school.findMany({
+      const schools = await this.prisma.organization.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
       });
-      const total = await this.prisma.school.count({ where });
+      const total = await this.prisma.organization.count({ where });
       return { total, page, limit, schools };
     } catch (error) {
       handlePrismaError(error);
@@ -83,7 +86,7 @@ export class SchoolService {
 
   async getSchoolById(id: string, adminId: string) {
     try {
-      return await this.prisma.school.findFirst({
+      return await this.prisma.organization.findFirst({
         where: {
           id,
           schoolAdminId: adminId,
@@ -180,7 +183,14 @@ export class SchoolService {
   }
   async getJobById(jobId: string) {
     try {
-      const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+      const job = await this.prisma.job.findUnique({
+        where: { id: jobId },
+        include: {
+          school: {
+            select: { id: true, name: true, address: true, logoUrl: true },
+          },
+        },
+      });
       if (!job) {
         throw new NotFoundException(`Job with id ${jobId} not found`);
       }
@@ -226,6 +236,99 @@ export class SchoolService {
       });
       const total = await this.prisma.job.count({ where });
       return { total, page, limit, jobs };
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
+  async getAvailableJobs(
+    page: number = 1,
+    limit: number = 10,
+    sort: 'latest' | 'oldest' = 'latest',
+    filters?: Partial<{
+      title: string;
+      employmentType: string[];
+      gradeLevels: string[];
+      subjects: string[];
+      location: string;
+      experienceMin: number;
+      experienceMax: number;
+      search: string;
+    }>,
+  ) {
+    try {
+      const where: any = { isActive: true };
+
+      if (filters?.search) {
+        where.OR = [
+          { title: { contains: filters.search, mode: 'insensitive' } },
+          { description: { contains: filters.search, mode: 'insensitive' } },
+          { location: { contains: filters.search, mode: 'insensitive' } },
+          {
+            school: { name: { contains: filters.search, mode: 'insensitive' } },
+          },
+        ];
+      }
+
+      if (filters?.employmentType) {
+        where.employmentType = { in: filters.employmentType };
+      }
+      if (filters?.title) {
+        where.title = { contains: filters.title, mode: 'insensitive' };
+      }
+      if (filters?.location) {
+        where.location = { contains: filters.location, mode: 'insensitive' };
+      }
+      if (filters?.experienceMin || filters?.experienceMax) {
+        where.experienceRequired = {};
+        if (filters.experienceMin) {
+          where.experienceRequired.gte = String(filters.experienceMin);
+        }
+        if (filters.experienceMax) {
+          where.experienceRequired.lte = String(filters.experienceMax);
+        }
+      }
+
+      if (filters?.employmentType?.length) {
+        where.employmentType = { in: filters.employmentType };
+      }
+
+      if (filters?.gradeLevels) {
+        where.gradeLevels = { hasSome: filters.gradeLevels };
+      }
+
+      if (filters?.subjects) {
+        where.subjects = { hasSome: filters.subjects };
+      }
+      const order: Prisma.JobOrderByWithRelationInput =
+        sort === 'latest'
+          ? { createdAt: Prisma.SortOrder.desc }
+          : { createdAt: Prisma.SortOrder.asc };
+
+      const jobs = await this.prisma.job.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: order,
+        include: {
+          school: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              logoUrl: true,
+              website: true,
+            },
+          },
+        },
+      });
+      const total = await this.prisma.job.count({ where });
+      return {
+        total,
+        page,
+        limit,
+        jobs,
+      };
     } catch (error) {
       handlePrismaError(error);
     }
@@ -450,7 +553,6 @@ export class SchoolService {
     dto: Partial<CVSubmissionDto>,
     file?: Express.Multer.File,
   ) {
-
     let resumeUrl = dto.resumeUrl;
     if (file) {
       const upload = await this.uploadAnonymousResume(file);
@@ -459,7 +561,7 @@ export class SchoolService {
 
     const cvSubmission = await this.prisma.cVSubmission.create({
       data: {
-        schoolId: dto.schoolId || "",
+        schoolId: dto.schoolId || '',
         fullName: dto.fullName || 'Anonymous User',
         email: dto.email || `anonymous${Date.now()}@noemail.com`,
         resumeUrl,
