@@ -326,6 +326,7 @@ export class SchoolService {
       return {
         total,
         page,
+        totalPages: Math.ceil(total / limit),
         limit,
         jobs,
       };

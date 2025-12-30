@@ -11,6 +11,7 @@ import { Prisma } from '@prisma/client';
  * Global Prisma error handler for PostgreSQL
  */
 export function handlePrismaError(err: any) {
+  console.error(err);
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
       case 'P2000':
