@@ -12,12 +12,13 @@ import {
   UploadCertificationDto,
 } from './dto/upload.dto';
 import { FollowDto } from './dto/follow.dto';
-import { ApplicationStatus } from '@prisma/client';
+import { ApplicationStatus, LisenceStatus } from '@prisma/client';
 import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
 import { UploadResumeDto } from './dto/upload-resume.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { UploadLisenceDto } from './dto/upload-lisence.dto';
 
 @Injectable()
 export class TeacherService {
@@ -76,7 +77,7 @@ export class TeacherService {
               endorsementsGiven: true,
               endorsementsReceived: true,
               followers: true,
-              following: true,
+              // following: true,
               savedJobs: true,
               posts: true,
             },
@@ -236,11 +237,18 @@ export class TeacherService {
     teacherId: string,
     page = 1,
     limit = 10,
+    search?: string,
     status?: ApplicationStatus,
+    sort: 'latest' | 'oldest' = 'latest',
   ) {
     try {
       const where: any = { teacherId };
       if (status) where.status = status;
+      if (search) {
+        where.OR = {
+          job: { title: { contains: search, mode: 'insensitive' } },
+        };
+      }
 
       const applications = await this.prisma.jobApplication.findMany({
         where,
@@ -259,13 +267,43 @@ export class TeacherService {
             },
           },
         },
-        orderBy: { appliedAt: 'desc' },
+        orderBy: { appliedAt: sort === 'latest' ? 'desc' : 'asc' },
       });
 
       const total = await this.prisma.jobApplication.count({ where });
       return { total, page, limit, applications };
     } catch (err) {
       handlePrismaError(err);
+    }
+  }
+
+  async getApplicationById(applicationId: string, teacherId: string) {
+    try {
+      const application = await this.prisma.jobApplication.findFirst({
+        where: { id: applicationId, teacherId },
+        include: {
+          job: {
+            select: {
+              id: true,
+              title: true,
+              location: true,
+              employmentType: true,
+              salaryMin: true,
+              salaryMax: true,
+              requirements: true,
+              school: {
+                select: { id: true, name: true, address: true, logoUrl: true },
+              },
+            },
+          },
+        },
+      });
+      if (!application) {
+        throw new NotFoundException('Application not found');
+      }
+      return application;
+    } catch (e) {
+      handlePrismaError(e);
     }
   }
 
@@ -380,7 +418,9 @@ export class TeacherService {
 
   async update(id: string, dto: UpdateEducationDto) {
     try {
-      const existing = await this.prisma.education.findUnique({ where: { id } });
+      const existing = await this.prisma.education.findUnique({
+        where: { id },
+      });
       if (!existing)
         throw new NotFoundException(`Education with id ${id} not found`);
       return await this.prisma.education.update({ where: { id }, data: dto });
@@ -391,7 +431,9 @@ export class TeacherService {
 
   async remove(id: string) {
     try {
-      const existing = await this.prisma.education.findUnique({ where: { id } });
+      const existing = await this.prisma.education.findUnique({
+        where: { id },
+      });
       if (!existing)
         throw new NotFoundException(`Education with id ${id} not found`);
       await this.prisma.education.delete({ where: { id } });
@@ -554,9 +596,138 @@ export class TeacherService {
     }
   }
 
- 
+  // =====================================================
+  // Lisence upload, fetching & verification (super admin)
+  // =====================================================
+
+  async uploadLisence(
+    teacherId: string,
+    dto: UploadLisenceDto,
+    file: Express.Multer.File,
+  ) {
+    try {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+      });
+      if (!teacher) {
+        throw new NotFoundException('Teacher with that id not found');
+      }
+      const { url } = await this.cloudinaryService.uploadFile(file, 'lisences');
+      const lisence = await this.prisma.lisence.upsert({
+        where: { teacherId },
+        update: {
+          lisenceNumber: dto.lisenceNumber,
+          documentUrl: url,
+          issuingOrganization: dto.issuingOrganization,
+          status: LisenceStatus.PENDING,
+        },
+        create: {
+          teacherId,
+          lisenceNumber: dto.lisenceNumber,
+          documentUrl: url,
+          status: LisenceStatus.PENDING,
+        },
+      });
+      return lisence;
+    } catch (e) {
+      handlePrismaError(e);
+    }
+  }
+
+  async verifyLisence(
+    lisenceId: string,
+    adminId: string,
+    approve: boolean,
+    rejectionReason?: string,
+  ) {
+    try {
+      const lisence = await this.prisma.lisence.findUnique({
+        where: { id: lisenceId },
+      });
+      if (!lisence) {
+        throw new NotFoundException('Lisence with that id not found');
+      }
+      if (!approve && (!rejectionReason || rejectionReason.trim() === '')) {
+        throw new BadRequestException(
+          'Rejection reason is required when rejecting a lisence',
+        );
+      }
+      const updatedLisence = await this.prisma.lisence.update({
+        where: { id: lisenceId },
+        data: {
+          status: approve ? LisenceStatus.APPROVED : LisenceStatus.REJECTED,
+          rejectionReason: approve ? null : rejectionReason,
+          verifiedAt: new Date(),
+          verifiedBy: adminId,
+        },
+      });
+      return updatedLisence;
+    } catch (e) {
+      handlePrismaError(e);
+    }
+  }
+
+  async getAllLisences(
+    status: LisenceStatus = LisenceStatus.PENDING,
+    page = 1,
+    limit = 10,
+    sort: 'latest' | 'oldest' = 'latest',
+  ) {
+    try {
+      const where: any = { status };
+      if (status) {
+        where.status = status;
+      }
+      const lisences = await this.prisma.lisence.findMany({
+        where,
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              profilePhotoUrl: true,
+            },
+          },
+        },
+        take: limit,
+        skip: (page - 1) * limit,
+        orderBy: { createdAt: sort === 'latest' ? 'desc' : 'asc' },
+      });
+      const total = await this.prisma.lisence.count({ where });
+      return {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        lisences,
+      };
+    } catch (e) {
+      console.error(e);
+      handlePrismaError(e);
+    }
+  }
+
+  async getLisenceById(lisenceId: string) {
+    try {
+      const lisence = await this.prisma.lisence.findUnique({
+        where: { id: lisenceId },
+        include: {
+          teacher: true,
+        },
+      });
+      if (!lisence) {
+        throw new NotFoundException('Lisence with that id not found');
+      }
+      return lisence;
+    } catch (e) {
+      handlePrismaError(e);
+    }
+  }
+
   // Helper
-  
+
   private extractPublicId(url: string): string {
     const parts = url.split('/');
     const lastTwo = parts.slice(-2).join('/');

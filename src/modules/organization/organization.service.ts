@@ -7,238 +7,189 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateJobOrganizationDto } from './dto/create-job-organization.dto';
 import { UpdateJobOrganizationDto } from './dto/update-job-organization.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
-import { ApplicationStatus, EmploymentType } from '@prisma/client';
+import { ApplicationStatus, EmploymentType, FollowType } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 
 @Injectable()
 export class OrganizationService {
   constructor(private prisma: PrismaService) {}
 
-  // Generate unique slug
-
-  private generateSlug(organizationName: string): string {
-    return (
-      organizationName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') +
-      '-' +
-      Math.random().toString(36).substring(2, 6)
-    );
-  }
-
-  // Resolve either slug or organizationId
-
-  private async resolveOrganizationId(orgParam: string): Promise<string> {
-    const org = await this.prisma.jobOrganization.findFirst({
-      where: {
-        OR: [
-          { organizationId: orgParam }, // internal ID
-          { slug: orgParam }, // public slug
-        ],
-      },
-    });
-
-    if (!org) throw new NotFoundException('Organization not found');
-
-    return org.organizationId;
-  }
-
-  // Create a Job
-
-  async createJob(
-    organizationId: string | undefined,
-    dto: CreateJobOrganizationDto,
+  // organization page in design
+  async getOrganizations(
+    page: number = 1,
+    limit: number = 10,
+    userId?: string,
+    tab: 'explore' | 'popular' | 'followed' = 'explore',
+    search?: string,
   ) {
     try {
-      const slug = dto.slug ?? this.generateSlug(dto.organizationName);
-      const finalOrganizationId = organizationId ?? slug;
+      const where: any = {};
+      if (search) {
+        where.name = { contains: search, mode: 'insensitive' };
+      }
+      let orderBy: any = { createdAt: 'desc' };
 
-      return await this.prisma.jobOrganization.create({
-        data: {
-          ...dto,
-          slug,
-          organizationId: finalOrganizationId,
-          employmentType: dto.employmentType ?? EmploymentType.FULL_TIME,
-          isActive: dto.isActive ?? true,
+      // Handle followed tab
+      if (tab === 'followed') {
+        if (!userId) {
+          return { page, limit, total: 0, data: [] };
+        }
+        const followedOrgs = await this.prisma.follow.findMany({
+          where: {
+            followerId: userId,
+            followingType: FollowType.SCHOOL,
+          },
+          select: { followingId: true },
+        });
+
+        const followedIds = followedOrgs.map((f) => f.followingId);
+
+        if (followedIds.length === 0) {
+          return { page, limit, total: 0, data: [] };
+        }
+
+        where.id = { in: followedIds };
+      }
+
+      // Handle popular tab
+      if (tab === 'popular') {
+        const popularOrgIds = await this.prisma.follow.groupBy({
+          by: ['followingId'],
+          where: { followingType: FollowType.SCHOOL },
+          _count: { followingId: true },
+          orderBy: { _count: { followingId: 'desc' } },
+        });
+
+        const orderedIds = popularOrgIds.map((o) => o.followingId);
+
+        if (orderedIds.length === 0) {
+          return { page, limit, total: 0, data: [] };
+        }
+
+        where.id = { in: orderedIds };
+      }
+
+      // Fetch organizations
+      const [allOrganizations, total] = await Promise.all([
+        this.prisma.organization.findMany({
+          where,
+          include: { _count: { select: { jobs: true } } },
+        }),
+        this.prisma.organization.count({ where }),
+      ]);
+
+      let organizations = allOrganizations;
+
+      // Handle popular tab ordering and pagination
+      if (tab === 'popular') {
+        const popularOrgIds = await this.prisma.follow.groupBy({
+          by: ['followingId'],
+          where: { followingType: FollowType.SCHOOL },
+          _count: { followingId: true },
+          orderBy: { _count: { followingId: 'desc' } },
+        });
+
+        const orderMap = new Map(
+          popularOrgIds.map((org, index) => [org.followingId, index]),
+        );
+
+        // Sort by popularity
+        organizations = allOrganizations.sort((a, b) => {
+          const orderA = orderMap.get(a.id) ?? Infinity;
+          const orderB = orderMap.get(b.id) ?? Infinity;
+          return orderA - orderB;
+        });
+
+        // Apply pagination
+        const start = (page - 1) * limit;
+        organizations = organizations.slice(start, start + limit);
+      } else {
+        // Apply pagination for explore and followed tabs
+        const start = (page - 1) * limit;
+        organizations = allOrganizations
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(start, start + limit);
+      }
+
+      // Get follower counts for the paginated organizations
+      const orgIds = organizations.map((org) => org.id);
+
+      if (orgIds.length === 0) {
+        return { page, limit, total, data: [] };
+      }
+
+      const followerCounts = await this.prisma.follow.groupBy({
+        by: ['followingId'],
+        where: {
+          followingType: FollowType.SCHOOL,
+          followingId: { in: orgIds },
+        },
+        _count: { followingId: true },
+      });
+
+      const followerCountMap = new Map(
+        followerCounts.map((f) => [f.followingId, f._count.followingId]),
+      );
+
+      // Get followed status for current user
+      const followedOrgIds = userId
+        ? new Set(
+            (
+              await this.prisma.follow.findMany({
+                where: {
+                  followerId: userId,
+                  followingType: FollowType.SCHOOL,
+                  followingId: { in: orgIds },
+                },
+                select: { followingId: true },
+              })
+            ).map((f) => f.followingId),
+          )
+        : new Set<string>();
+
+      // Map to response format
+      const data = organizations.map((org) => ({
+        id: org.id,
+        name: org.name,
+        logoUrl: org.logoUrl,
+        bannerUrl: org.bannerUrl,
+        about: org.about,
+        isVerified: org.isVerified,
+        createdAt: org.createdAt,
+        jobsCount: org._count.jobs,
+        followersCount: followerCountMap.get(org.id) ?? 0,
+        isFollowed: followedOrgIds.has(org.id),
+        isActive: 'active', // TODO: implement actual isActive logic
+      }));
+
+      return { page, limit, totalPages: Math.ceil(total / limit), total, data };
+    } catch (err) {
+      handlePrismaError(err);
+      // If handlePrismaError doesn't throw, return empty result
+      return { page, limit, total: 0, data: [] };
+    }
+  }
+
+  async getOrganizationById(orgId: string) {
+    try {
+      const organization = await this.prisma.organization.findUnique({
+        where: { id: orgId },
+      });
+      if (!organization) {
+        throw new Error('Organization not found');
+      }
+      const followerCountResult = await this.prisma.follow.count({
+        where: {
+          followingType: FollowType.SCHOOL,
+          followingId: orgId,
         },
       });
-    } catch (error) {
-      handlePrismaError(error);
+      return {
+        organization,
+        followerCount: followerCountResult,
+      };
+    } catch (e) {
+      handlePrismaError(e);
     }
-  }
-
-  // Update a Job
-
-  async updateJob(
-    orgParam: string,
-    jobId: string,
-    dto: UpdateJobOrganizationDto,
-  ) {
-    try {
-      const organizationId = await this.resolveOrganizationId(orgParam);
-
-      const job = await this.prisma.jobOrganization.findUnique({
-        where: { id: jobId },
-      });
-      if (!job || job.organizationId !== organizationId) {
-        throw new ForbiddenException('You are not allowed to update this job');
-      }
-
-      return await this.prisma.jobOrganization.update({
-        where: { id: jobId },
-        data: dto,
-      });
-    } catch (error) {
-      handlePrismaError(error);
-      throw new NotFoundException(`Job with id ${jobId} not found`);
-    }
-  }
-
-  // Delete a Job
-
-  async deleteJob(orgParam: string, jobId: string) {
-    try {
-      const organizationId = await this.resolveOrganizationId(orgParam);
-
-      const job = await this.prisma.jobOrganization.findUnique({
-        where: { id: jobId },
-      });
-      if (!job || job.organizationId !== organizationId) {
-        throw new ForbiddenException('You are not allowed to delete this job');
-      }
-
-      await this.prisma.jobOrganization.delete({ where: { id: jobId } });
-      return { message: 'Job deleted successfully' };
-    } catch (error) {
-      handlePrismaError(error);
-      throw new NotFoundException(`Job with id ${jobId} not found`);
-    }
-  }
-
-  // Get Jobs with filters
-
-  async getJobs(
-    orgParam: string,
-    page = 1,
-    limit = 10,
-    filters?: Partial<{ title: string; location: string; isActive: boolean }>,
-  ) {
-    try {
-      const organizationId = await this.resolveOrganizationId(orgParam);
-
-      const where: any = { organizationId };
-      if (filters?.title)
-        where.title = { contains: filters.title, mode: 'insensitive' };
-      if (filters?.location)
-        where.location = { contains: filters.location, mode: 'insensitive' };
-      if (filters?.isActive !== undefined) where.isActive = filters.isActive;
-
-      const jobs = await this.prisma.jobOrganization.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-      });
-
-      const total = await this.prisma.jobOrganization.count({ where });
-      return { total, page, limit, jobs };
-    } catch (error) {
-      handlePrismaError(error);
-    }
-  }
-
-  // Get Applicants for a Job
-
-  async getApplicants(orgParam: string, jobId: string, page = 1, limit = 10) {
-    try {
-      const organizationId = await this.resolveOrganizationId(orgParam);
-
-      const job = await this.prisma.jobOrganization.findUnique({
-        where: { id: jobId },
-      });
-      if (!job || job.organizationId !== organizationId) {
-        throw new ForbiddenException(
-          'You are not allowed to view applicants for this job',
-        );
-      }
-
-      const applications = await this.prisma.organizationApplication.findMany({
-        where: { jobId },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
-
-      const total = await this.prisma.organizationApplication.count({
-        where: { jobId },
-      });
-      return { total, page, limit, applications };
-    } catch (error) {
-      handlePrismaError(error);
-    }
-  }
-
-  // Update Application Status
-
-  async updateApplicationStatus(
-    orgParam: string,
-    jobId: string,
-    applicationId: string,
-    dto: UpdateApplicationDto,
-  ) {
-    try {
-      const organizationId = await this.resolveOrganizationId(orgParam);
-
-      const application = await this.prisma.organizationApplication.findUnique({
-        where: { id: applicationId },
-      });
-      if (!application) throw new NotFoundException('Application not found');
-
-      const job = await this.prisma.jobOrganization.findUnique({
-        where: { id: jobId },
-      });
-      if (!job || job.organizationId !== organizationId) {
-        throw new ForbiddenException(
-          'You are not allowed to update this application',
-        );
-      }
-
-      return await this.prisma.organizationApplication.update({
-        where: { id: applicationId },
-        data: { status: dto.status },
-      });
-    } catch (error) {
-      handlePrismaError(error);
-    }
-  }
-
-  // Public Job Application
-
-  async publicApply(
-    jobId: string,
-    data: {
-      fullName: string;
-      email: string;
-      phoneNumber?: string;
-      currentCompany?: string;
-      yearsOfExperience?: number;
-      location?: string;
-      linkedinUrl?: string;
-      portfolioLink?: string;
-      resumeUrl?: string;
-      coverLetter?: string;
-    },
-  ) {
-    const job = await this.prisma.jobOrganization.findUnique({
-      where: { id: jobId },
-    });
-    if (!job) throw new NotFoundException('Job not found');
-
-    return this.prisma.organizationApplication.create({
-      data: {
-        jobId,
-        ...data,
-        status: ApplicationStatus.SUBMITTED,
-      },
-    });
   }
 }

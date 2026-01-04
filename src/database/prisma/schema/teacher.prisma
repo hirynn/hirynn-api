@@ -36,10 +36,11 @@ model Teacher {
   endorsementsGiven    Endorsement[]    @relation("EndorserRelation")
   endorsementsReceived Endorsement[]    @relation("EndorsedRelation")
   followers            Follow[]         @relation("FollowerRelation")
-  following            Follow[]         @relation("FollowingRelation")
+  // following            Follow[]         @relation("FollowingRelation")
   notifications        Notification[]
   reportsReporter      Report[]         @relation("ReporterRelation")
   reportsReported      Report[]         @relation("ReportedTeacherRelation")
+  lisence              Lisence?
 
   // Indexes for search and filtering
   @@index([email])
@@ -134,4 +135,26 @@ model DemoVideo {
   @@index([teacherId])
   @@index([createdAt])
   @@map("demo_videos")
+}
+
+model Lisence {
+  id                  String        @id @default(cuid())
+  teacherId           String        @unique @map("teacher_id")
+  lisenceNumber       String?       @map("lisence_number")
+  issuingOrganization String?       @map("issuing_organization")
+  documentUrl         String        @map("document_url")
+  status              LisenceStatus @default(PENDING)
+  rejectionReason     String?       @map("rejection_reason") @db.Text
+  verifiedBy          String?       @map("verified_by")
+  verifiedAt          DateTime?     @map("verified_at") @db.Timestamptz()
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // relations
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // indexes
+  @@index([teacherId])
+  @@index([status])
+  @@map("lisences")
 }

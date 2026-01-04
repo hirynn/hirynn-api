@@ -10,9 +10,12 @@ export class CreateAnonymousApplicationDto {
   @IsNotEmpty()
   @IsString()
   fullName: string;
-  @IsNotEmpty()
+
+  @IsOptional()
   @IsString()
-  currentCompany: string;
+  currentCompany?: string;
+
+  @IsNotEmpty()
   @IsEmail()
   email: string;
 
@@ -39,6 +42,7 @@ export class CreateAnonymousApplicationDto {
   @IsOptional()
   @IsString()
   coverLetter?: string;
+
   @IsOptional()
   @IsString()
   portfolioLink?: string;
@@ -53,7 +57,7 @@ export class CVSubmissionDto {
   @IsString()
   fullName: string;
 
-  @IsOptional()
+  @IsNotEmpty() // Changed: email is required in schema
   @IsEmail()
   email: string;
 
@@ -77,9 +81,9 @@ export class CVSubmissionDto {
   @IsString()
   location?: string;
 
-  @IsOptional()
+  @IsOptional() // Changed: currentCompany is optional in schema
   @IsString()
-  currentCompany: string;
+  currentCompany?: string;
 
   @IsOptional()
   @IsString()
