@@ -1,4 +1,3 @@
-
 enum AdminRole {
   SUPER_ADMIN
   MODERATOR
@@ -28,4 +27,18 @@ enum ReportStatus {
   PENDING
   RESOLVED
   DISMISSED
+}
+
+enum ContactReason {
+  ORGANIZATION_SUPPORT
+  EDUCATOR_SUPPORT
+  TECHNICAL_ISSUE
+  FEEDBACK_OR_SUGGESTION
+  OTHER
+}
+
+enum LisenceStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

@@ -31,6 +31,7 @@ import {
   CVSubmissionDto,
 } from './dto/CreateAnonymousApplicationDto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-auth.guard';
 @Controller('school')
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
@@ -115,12 +116,12 @@ export class SchoolController {
   }
 
   @Get('job/available')
+  @UseGuards(OptionalJwtAuthGuard)
   getAvailableJobs(
+    @Req() req,
     @Query('page') page = '1',
     @Query('limit') limit = '10',
     @Query('sort') sort: 'latest' | 'oldest' = 'latest',
-
-    // Filters
     @Query('search') search?: string,
     @Query('title') title?: string,
     @Query('employmentType') employmentType?: string | string[],
@@ -130,6 +131,7 @@ export class SchoolController {
     @Query('experienceMin') experienceMin?: string,
     @Query('experienceMax') experienceMax?: string,
   ) {
+    const userId = req.user?.id;
     return this.schoolService.getAvailableJobs(
       Number(page),
       Number(limit),
@@ -143,22 +145,20 @@ export class SchoolController {
             ? employmentType
             : [employmentType]
           : undefined,
-
         gradeLevels: gradeLevels
           ? Array.isArray(gradeLevels)
             ? gradeLevels
             : [gradeLevels]
           : undefined,
-
         subjects: subjects
           ? Array.isArray(subjects)
             ? subjects
             : [subjects]
           : undefined,
-
         experienceMin: experienceMin ? Number(experienceMin) : undefined,
         experienceMax: experienceMax ? Number(experienceMax) : undefined,
       },
+      userId,
     );
   }
 

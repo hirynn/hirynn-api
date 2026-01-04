@@ -85,8 +85,8 @@ model Follow {
   createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations - polymorphic relationship based on followingType
-  followerTeacher  Teacher  @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
-  followingTeacher Teacher? @relation("FollowingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+  followerTeacher Teacher @relation("FollowerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  //followingTeacher Teacher? @relation("FollowingRelation", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId, followingType])
   // Indexes
