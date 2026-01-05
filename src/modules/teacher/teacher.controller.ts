@@ -29,11 +29,12 @@ import { FollowDto } from './dto/follow.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { ApplicationStatus } from '@prisma/client';
+import { ApplicationStatus, LisenceStatus } from '@prisma/client';
 import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
 import { UploadResumeDto } from './dto/upload-resume.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadLisenceDto, VerifyLisenceDto } from './dto/upload-lisence.dto';
 
 @Controller('teachers')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -49,6 +50,7 @@ export class TeacherController {
     @Req() req: any,
     @Query('page') page = 1,
     @Query('limit') limit = 10,
+    @Query('search') search?: string,
     @Query('status') status?: ApplicationStatus,
   ) {
     const teacherId = req.user?.id;
@@ -60,6 +62,11 @@ export class TeacherController {
       Number(limit),
       status,
     );
+  }
+  @Get('applications/:id')
+  async getApplicationById(@Req() req: any, @Param('id') id: string) {
+    const teacherId = req.user?.id;
+    return this.teacherService.getApplicationById(id, teacherId);
   }
 
   // =======================
@@ -176,9 +183,7 @@ export class TeacherController {
     @Request() req,
   ) {
     if (req.user.id !== teacherId) {
-      throw new ForbiddenException(
-        'You can only update your own education',
-      );
+      throw new ForbiddenException('You can only update your own education');
     }
     return this.teacherService.update(id, dto);
   }
@@ -190,39 +195,38 @@ export class TeacherController {
     @Request() req,
   ) {
     if (req.user.id !== teacherId) {
-      throw new ForbiddenException(
-        'You can only delete your own education',
-      );
+      throw new ForbiddenException('You can only delete your own education');
     }
     return this.teacherService.remove(id);
   }
 
   //resumehai
- @Post('resume')
-@UseInterceptors(FileInterceptor('file'))
-async uploadResume(
-  @UploadedFile(
-    new ParseFilePipe({
-      validators: [
-        new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-        new FileTypeValidator({
-          fileType: /(pdf|doc|docx|application\/pdf|application\/msword|application\/vnd.openxmlformats-officedocument.wordprocessingml.document)$/i,
-        }),
-      ],
-    }),
-  )
-  file: Express.Multer.File,
-  @Request() req,
-) {
-  const teacherId = req.user?.id;
-  return this.teacherService.uploadResume(teacherId, file);
-}
+  @Post('resume')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadResume(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType:
+              /(pdf|doc|docx|application\/pdf|application\/msword|application\/vnd.openxmlformats-officedocument.wordprocessingml.document)$/i,
+          }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @Request() req,
+  ) {
+    const teacherId = req.user?.id;
+    return this.teacherService.uploadResume(teacherId, file);
+  }
 
-@Delete('resume')
-async deleteResume(@Request() req) {
-  const teacherId = req.user?.id;
-  return this.teacherService.deleteResume(teacherId);
-}
+  @Delete('resume')
+  async deleteResume(@Request() req) {
+    const teacherId = req.user?.id;
+    return this.teacherService.deleteResume(teacherId);
+  }
   @Post('profile-photo')
   @UseInterceptors(FileInterceptor('file'))
   async uploadProfilePhoto(
@@ -245,8 +249,63 @@ async deleteResume(@Request() req) {
   @Delete(':id/profile-photo')
   async deleteProfilePhoto(@Param('id') id: string, @Request() req) {
     if (req.user?.id !== id) {
-      throw new ForbiddenException('You can only delete your own profile photo');
+      throw new ForbiddenException(
+        'You can only delete your own profile photo',
+      );
     }
     return this.teacherService.deleteProfilePhoto(id);
+  }
+
+  // ============================================
+  // teacher lisence fetch, upload & verification
+  // ============================================
+
+  @Post('lisence')
+  @UseInterceptors(FileInterceptor('document'))
+  async uploadLisence(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: UploadLisenceDto,
+  ) {
+    const teacherId = req.user.id;
+    return this.teacherService.uploadLisence(teacherId, dto, file);
+  }
+
+  @Get('lisence/all')
+  @Roles('SUPER_ADMIN')
+  async getAllLisences(
+    @Query('status') status?: LisenceStatus,
+    @Query('sort') sort: 'latest' | 'oldest' = 'latest',
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
+    return this.teacherService.getAllLisences(
+      status,
+      Number(page),
+      Number(limit),
+      sort,
+    );
+  }
+
+  @Get('lisence/lisenceDetails/:id')
+  @Roles('SUPER_ADMIN')
+  async getLisenceById(@Param('id') id: string) {
+    return this.teacherService.getLisenceById(id);
+  }
+
+  @Patch('lisence/:id/verify')
+  @Roles('SUPER_ADMIN')
+  async verifyLisence(
+    @Param('id') lisenceId: string,
+    @Req() req: any,
+    @Body() dto: VerifyLisenceDto,
+  ) {
+    const adminId = req.user.id;
+    return this.teacherService.verifyLisence(
+      lisenceId,
+      adminId,
+      dto.approve,
+      dto.rejectionReason,
+    );
   }
 }

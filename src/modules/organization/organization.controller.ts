@@ -2,129 +2,46 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
   Delete,
-  Param,
-  Body,
   Query,
+  Req,
+  UseGuards,
+  Param,
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
-import { CreateJobOrganizationDto } from './dto/create-job-organization.dto';
-import { UpdateJobOrganizationDto } from './dto/update-job-organization.dto';
-import { UpdateApplicationDto } from './dto/update-application.dto';
-
-@Controller('organization')
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-auth.guard';
+@Controller('organizations')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 
-  @Post('job')
-  createJob(
-    @Query('organizationId') organizationId: string | undefined,
-    @Body() dto: CreateJobOrganizationDto,
-  ) {
-    return this.organizationService.createJob(organizationId, dto);
-  }
-
-  // Update Job
-
-  @Patch(':orgParam/job/:jobId')
-  updateJob(
-    @Param('orgParam') orgParam: string, // can be slug or organizationId
-    @Param('jobId') jobId: string,
-    @Body() dto: UpdateJobOrganizationDto,
-  ) {
-    return this.organizationService.updateJob(orgParam, jobId, dto);
-  }
-
-  // Delete Job
-
-  @Delete(':orgParam/job/:jobId')
-  deleteJob(
-    @Param('orgParam') orgParam: string,
-    @Param('jobId') jobId: string,
-  ) {
-    return this.organizationService.deleteJob(orgParam, jobId);
-  }
-
-
-  // Get Jobs with filters
-
-  @Get(':orgParam/jobs')
-  getJobs(
-    @Param('orgParam') orgParam: string,
+  @Get()
+  @UseGuards(OptionalJwtAuthGuard)
+  async getOrganizations(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Query('title') title?: string,
-    @Query('location') location?: string,
-    @Query('isActive') isActive?: string,
+    @Query('tab') tab?: 'explore' | 'popular' | 'followed',
+    @Query('search') search?: string,
   ) {
-    const filters = {
-      title,
-      location,
-      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+    const userId = req.user?.id;
+    if (tab === 'followed' && !userId) {
+      throw new Error('Login to view followed organizations');
+    }
+
+    return this.organizationService.getOrganizations(
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10,
+      userId,
+      tab ?? 'explore',
+      search,
+    );
+  }
+  @Get(':id')
+  async getOrganizationById(@Param('id') id: string) {
+    const organization = await this.organizationService.getOrganizationById(id);
+    return {
+      data: organization,
     };
-    return this.organizationService.getJobs(
-      orgParam,
-      Number(page) || 1,
-      Number(limit) || 10,
-      filters,
-    );
-  }
-
-
-  // Get Applicants
-
-  @Get(':orgParam/job/:jobId/applicants')
-  getApplicants(
-    @Param('orgParam') orgParam: string,
-    @Param('jobId') jobId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    return this.organizationService.getApplicants(
-      orgParam,
-      jobId,
-      Number(page) || 1,
-      Number(limit) || 10,
-    );
-  }
-
-  // Update Application Status
-
-  @Patch(':orgParam/job/:jobId/applicants/:applicationId')
-  updateApplicationStatus(
-    @Param('orgParam') orgParam: string,
-    @Param('jobId') jobId: string,
-    @Param('applicationId') applicationId: string,
-    @Body() body: UpdateApplicationDto,
-  ) {
-    return this.organizationService.updateApplicationStatus(
-      orgParam,
-      jobId,
-      applicationId,
-      body,
-    );
-  }
-
-  // Public Apply for Job
-
-  @Post('job/:jobId/apply')
-  applyJob(
-    @Param('jobId') jobId: string,
-    @Body()
-    body: {
-      fullName: string;
-      email: string;
-      phoneNumber?: string;
-      currentCompany?: string;
-      yearsOfExperience?: number;
-      location?: string;
-      linkedinUrl?: string;
-      portfolioLink?: string;
-      resumeUrl?: string;
-      coverLetter?: string;
-    },
-  ) {
-    return this.organizationService.publicApply(jobId, body);
   }
 }

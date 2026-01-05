@@ -115,7 +115,7 @@ export class SchoolService {
           endorsementsGiven: true,
           endorsementsReceived: true,
           followers: true,
-          following: true,
+          // following: true,
           savedJobs: true,
           posts: true,
         },
@@ -255,6 +255,7 @@ export class SchoolService {
       experienceMax: number;
       search: string;
     }>,
+    teacherId?: string,
   ) {
     try {
       const where: any = { isActive: true };
@@ -323,12 +324,21 @@ export class SchoolService {
         },
       });
       const total = await this.prisma.job.count({ where });
+      let isTeacherVerified = false;
+      if (teacherId) {
+        const teacher = await this.prisma.teacher.findUnique({
+          where: { id: teacherId },
+          select: { isVerified: true },
+        });
+        isTeacherVerified = teacher?.isVerified || false;
+      }
       return {
         total,
         page,
         totalPages: Math.ceil(total / limit),
         limit,
         jobs,
+        isTeacherVerified,
       };
     } catch (error) {
       handlePrismaError(error);
@@ -535,8 +545,10 @@ export class SchoolService {
         email: dto.email || `anonymous${Date.now()}@noemail.com`,
         resumeUrl,
         phone: dto.phone,
-        yearsExperience: dto.yearsExperience,
-        expectedSalary: dto.expectedSalary,
+        yearsExperience: dto.yearsExperience
+          ? Number(dto.yearsExperience)
+          : null,
+        expectedSalary: dto.expectedSalary ? Number(dto.expectedSalary) : null,
         location: dto.location,
         currentCompany: dto.currentCompany,
         coverLetter: dto.coverLetter,
@@ -567,8 +579,10 @@ export class SchoolService {
         email: dto.email || `anonymous${Date.now()}@noemail.com`,
         resumeUrl,
         phone: dto.phone,
-        yearsExperience: dto.yearsExperience,
-        expectedSalary: dto.expectedSalary,
+        yearsExperience: dto.yearsExperience
+          ? Number(dto.yearsExperience)
+          : null,
+        expectedSalary: dto.expectedSalary ? Number(dto.expectedSalary) : null,
         location: dto.location,
         currentCompany: dto.currentCompany,
         coverLetter: dto.coverLetter,
