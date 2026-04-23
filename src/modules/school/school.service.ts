@@ -619,7 +619,7 @@ export class SchoolService {
       const updatedApplication = await this.prisma.jobApplication.update({
         where: { jobId_teacherId: { jobId, teacherId } },
         data: {
-          status: dto.status as ApplicationStatus,
+          status: dto.status,
           statusUpdatedAt: new Date(),
         },
         include: { teacher: true },

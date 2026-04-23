@@ -27,7 +27,7 @@ export class OrganizationService {
       if (search) {
         where.name = { contains: search, mode: 'insensitive' };
       }
-      let orderBy: any = { createdAt: 'desc' };
+      const orderBy: any = { createdAt: 'desc' };
 
       // Handle followed tab
       if (tab === 'followed') {

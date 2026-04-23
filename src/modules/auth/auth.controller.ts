@@ -25,6 +25,7 @@ import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { PrismaService } from '../../database/prisma.service';
 import { LoginDto, UserType } from './dto/login.dto';
 import { RegisterTeacherDto } from './dto/register-teacher.dto';
 import { RegisterSchoolAdminDto } from './dto/register-school-admin.dto';
@@ -58,6 +59,12 @@ export interface LinkedInAuthResponse extends AuthResponse {
   isNewUser: boolean;
 }
 
+export interface OrganizationInfo {
+  id: string;
+  name: string;
+  isVerified: boolean;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -65,6 +72,7 @@ export interface UserProfile {
   userType: UserType;
   isActive: boolean;
   isVerified: boolean;
+  organizations?: OrganizationInfo[];
 }
 
 export interface TokenResponse {
@@ -98,7 +106,10 @@ export interface LinkedInUserProfile {
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Public()
   @Post('login')
@@ -740,13 +751,32 @@ export class AuthController {
         userType: { type: 'string' },
         isActive: { type: 'boolean' },
         isVerified: { type: 'boolean' },
+        organizations: {
+          type: 'array',
+          items: {
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              isVerified: { type: 'boolean' },
+            },
+          },
+        },
       },
     },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getProfile(@Req() req: any): UserProfile {
+  async getProfile(@Req() req: any): Promise<UserProfile> {
     const user = req.user as UserProfile;
     this.logger.log(`Profile accessed for user: ${user.id}`);
+
+    if (user.userType === UserType.SCHOOL_ADMIN) {
+      const organizations = await this.prisma.organization.findMany({
+        where: { schoolAdminId: user.id },
+        select: { id: true, name: true, isVerified: true },
+      });
+      return { ...user, organizations };
+    }
+
     return user;
   }
 
