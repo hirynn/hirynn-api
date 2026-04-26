@@ -101,6 +101,13 @@ export class TeacherController {
   // =======================
   // Profile
   // =======================
+  @Get('me')
+  async getCurrentTeacherProfile(@Req() req: any) {
+    const teacherId = req.user?.id;
+    if (!teacherId) throw new NotFoundException('Teacher not found');
+    return this.teacherService.getTeacherProfileForApplication(teacherId);
+  }
+
   @Get(':id')
   getProfile(@Param('id') id: string, @Query('public') isPublic?: string) {
     return this.teacherService.getProfile(id, isPublic === 'true');

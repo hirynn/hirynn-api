@@ -91,6 +91,26 @@ export class TeacherService {
     }
   }
 
+  async getTeacherProfileForApplication(teacherId: string) {
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: teacherId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        resumeUrl: true,
+        location: true,
+        currentSchool: true,
+        yearsExperience: true,
+        profilePhotoUrl: true,
+      },
+    });
+    if (!teacher)
+      throw new NotFoundException('Teacher with id ${teacherId} not found');
+    return teacher;
+  }
+
   // =======================
   // Update teacher profile
   // =======================
