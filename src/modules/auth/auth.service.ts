@@ -259,7 +259,7 @@ export class AuthService {
           name,
           phone,
           isActive: true,
-          isVerified: false,
+          isVerified: true, // TODO: in production change it to false
         },
       })) as SchoolAdmin;
 

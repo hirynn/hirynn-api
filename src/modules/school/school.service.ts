@@ -9,7 +9,12 @@ import { UpdateSchoolDto } from './dto/update-school.dto';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
-import { EmploymentType, Prisma, ApplicationStatus } from '@prisma/client';
+import {
+  EmploymentType,
+  Prisma,
+  ApplicationStatus,
+  WorkplaceType,
+} from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import {
   CreateAnonymousApplicationDto,
@@ -30,7 +35,7 @@ export class SchoolService {
   async createSchool(adminId: string, dto: CreateSchoolDto) {
     try {
       return await this.prisma.organization.create({
-        data: { ...dto, schoolAdminId: adminId },
+        data: { ...dto, schoolAdminId: adminId, isVerified: true }, // TODO: in production change it to false
       });
     } catch (error) {
       handlePrismaError(error);
@@ -147,6 +152,7 @@ export class SchoolService {
           schoolId: dto.schoolId,
           experienceRequired: dto.experienceRequired ?? '0',
           employmentType: dto.employmentType ?? EmploymentType.FULL_TIME,
+          workplaceType: dto.workplaceType ?? WorkplaceType.ON_SITE,
           salaryMin: dto.salaryMin ? new Prisma.Decimal(dto.salaryMin) : null,
           salaryMax: dto.salaryMax ? new Prisma.Decimal(dto.salaryMax) : null,
           requirements: dto.requirements ?? null,
