@@ -138,7 +138,9 @@ export class SchoolService {
       return await this.prisma.job.create({
         data: {
           title: dto.title,
-          description: dto.description,
+          jobDescription: dto.jobDescription,
+          keyResponsibilities: dto.keyResponsibilities,
+          preferredSkills: dto.preferredSkills,
           subjects: dto.subjects,
           gradeLevels: dto.gradeLevels,
           location: dto.location,

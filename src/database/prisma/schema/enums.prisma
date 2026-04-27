@@ -9,6 +9,12 @@ enum EmploymentType {
   CONTRACT
 }
 
+enum WorkplaceType {
+  ON_SITE
+  REMOTE
+  HYBRID
+}
+
 enum ApplicationStatus {
   SUBMITTED
   VIEWED

@@ -2,7 +2,9 @@ model Job {
   id                  String         @id @default(cuid())
   schoolId            String         @map("school_id")
   title               String         @db.VarChar(200)
-  description         String         @db.Text
+  jobDescription      String         @db.Text
+  keyResponsibilities String         @db.Text
+  preferredSkills     String         @db.Text
   subjects            String[]
   gradeLevels         String[]       @map("grade_levels")
   experienceRequired  String         @map("experience_required") @db.VarChar(100)
