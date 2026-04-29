@@ -48,3 +48,8 @@ enum LisenceStatus {
   APPROVED
   REJECTED
 }
+
+enum SchoolType {
+  PUBLIC
+  PRIVATE
+}

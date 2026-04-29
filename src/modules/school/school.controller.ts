@@ -38,25 +38,25 @@ export class SchoolController {
 
   /** School CRUD */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Post()
   createSchool(@Req() req, @Body() dto: CreateSchoolDto) {
     return this.schoolService.createSchool(req.user?.id, dto);
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Patch(':id')
   updateSchool(@Param('id') id: string, @Body() dto: UpdateSchoolDto) {
     return this.schoolService.updateSchool(id, dto);
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Delete(':id')
   deleteSchool(@Param('id') id: string) {
     return this.schoolService.deleteSchool(id);
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Get()
   getSchools(@Req() req, @Query() query: any) {
     const { page = 1, limit = 10, name, isVerified } = query;
@@ -73,13 +73,20 @@ export class SchoolController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
+  @Get('my-school')
+  getMySchool(@Req() req) {
+    return this.schoolService.getMySchool(req.user?.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('TEACHER')
   @Get(':id')
   getSchoolById(@Req() req, @Param('id') id: string) {
     return this.schoolService.getSchoolById(id, req.user.id);
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Get('teacher/:id')
   async getTeacherById(@Param('id') id: string) {
     try {
@@ -96,7 +103,7 @@ export class SchoolController {
 
   /** Job CRUD */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Post('job')
   async createJob(@Body() createJobDto: CreateJobDto) {
     return this.schoolService.createJob(createJobDto);

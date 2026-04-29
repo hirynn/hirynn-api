@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateSchoolDto } from './dto/create-school.dto';
+import { CreateSchoolDto, JobPosterDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -32,10 +32,29 @@ export class SchoolService {
   // =======================
   // School CRUD
   // =======================
-  async createSchool(adminId: string, dto: CreateSchoolDto) {
+  async createSchool(teacherId: string, dto: CreateSchoolDto) {
     try {
-      return await this.prisma.organization.create({
-        data: { ...dto, schoolAdminId: adminId, isVerified: true }, // TODO: in production change it to false
+      const { jobPosters, ...orgData } = dto;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        const organization = await prisma.organization.create({
+          data: {
+            ...orgData,
+            teacherId: teacherId,
+            isVerified: true, // TODO: in production change it to false
+          },
+        });
+
+        if (jobPosters && jobPosters.length > 0) {
+          await prisma.jobPoster.createMany({
+            data: jobPosters.map((poster) => ({
+              organizationId: organization.id,
+              email: poster.email,
+            })),
+          });
+        }
+
+        return organization;
       });
     } catch (error) {
       handlePrismaError(error);
@@ -64,6 +83,18 @@ export class SchoolService {
     }
   }
 
+  async getMySchool(teacherId: string, page = 1, limit = 10) {
+    try {
+      return this.prisma.organization.findMany({
+        where: { teacherId: teacherId },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
   async getSchools(
     adminId: string,
     page = 1,
@@ -71,7 +102,7 @@ export class SchoolService {
     filters?: Partial<{ name: string; isVerified: boolean }>,
   ) {
     try {
-      const where: any = { schoolAdminId: adminId };
+      const where: any = { teacherId: adminId };
       if (filters?.name)
         where.name = { contains: filters.name, mode: 'insensitive' };
       if (filters?.isVerified !== undefined)
@@ -89,12 +120,12 @@ export class SchoolService {
     }
   }
 
-  async getSchoolById(id: string, adminId: string) {
+  async getSchoolById(id: string, teacherId: string) {
     try {
       return await this.prisma.organization.findFirst({
         where: {
           id,
-          schoolAdminId: adminId,
+          teacherId: teacherId,
         },
       });
     } catch (error) {
