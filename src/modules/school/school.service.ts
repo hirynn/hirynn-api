@@ -63,9 +63,30 @@ export class SchoolService {
 
   async updateSchool(schoolId: string, dto: UpdateSchoolDto) {
     try {
-      return await this.prisma.organization.update({
-        where: { id: schoolId },
-        data: dto,
+      const { jobPosters, ...orgData } = dto;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        const organization = await prisma.organization.update({
+          where: { id: schoolId },
+          data: orgData,
+        });
+
+        if (jobPosters !== undefined) {
+          await prisma.jobPoster.deleteMany({
+            where: { organizationId: schoolId },
+          });
+
+          if (jobPosters.length > 0) {
+            await prisma.jobPoster.createMany({
+              data: jobPosters.map((poster) => ({
+                organizationId: schoolId,
+                email: poster.email,
+              })),
+            });
+          }
+        }
+
+        return organization;
       });
     } catch (error) {
       handlePrismaError(error);
@@ -681,6 +702,47 @@ export class SchoolService {
       });
 
       return updatedApplication;
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
+  // =======================
+  // School Asset Uploads
+  // =======================
+  async uploadSchoolLogo(schoolId: string, file: Express.Multer.File, teacherId: string) {
+    try {
+      const school = await this.prisma.organization.findFirst({
+        where: { id: schoolId, teacherId },
+      });
+      if (!school) {
+        throw new NotFoundException(`School with id ${schoolId} not found or not owned by teacher`);
+      }
+
+      const { url } = await this.cloudinaryService.uploadFile(file, 'schools/logos');
+      return await this.prisma.organization.update({
+        where: { id: schoolId },
+        data: { logoUrl: url },
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
+  async uploadSchoolBanner(schoolId: string, file: Express.Multer.File, teacherId: string) {
+    try {
+      const school = await this.prisma.organization.findFirst({
+        where: { id: schoolId, teacherId },
+      });
+      if (!school) {
+        throw new NotFoundException(`School with id ${schoolId} not found or not owned by teacher`);
+      }
+
+      const { url } = await this.cloudinaryService.uploadFile(file, 'schools/banners');
+      return await this.prisma.organization.update({
+        where: { id: schoolId },
+        data: { bannerUrl: url },
+      });
     } catch (error) {
       handlePrismaError(error);
     }

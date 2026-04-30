@@ -85,6 +85,52 @@ export class SchoolController {
   getSchoolById(@Req() req, @Param('id') id: string) {
     return this.schoolService.getSchoolById(id, req.user.id);
   }
+
+  /** School Asset Uploads */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('TEACHER')
+  @Post(':id/logo')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadLogo(
+    @Param('id') id: string,
+    @Req() req,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType: /(image\/jpeg|image\/png|image\/gif|image\/webp)$/i,
+          }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.schoolService.uploadSchoolLogo(id, file, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('TEACHER')
+  @Post(':id/banner')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadBanner(
+    @Param('id') id: string,
+    @Req() req,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType: /(image\/jpeg|image\/png|image\/gif|image\/webp)$/i,
+          }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.schoolService.uploadSchoolBanner(id, file, req.user.id);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('TEACHER')
   @Get('teacher/:id')
