@@ -15,7 +15,7 @@ model SchoolAdmin {
   resetToken   String?
 
   // Relations
-  // schools         Organization[]
+  organizations   Organization[]
   notifications   Notification[]
   reportsReporter Report[]       @relation("SchoolAdminReporterRelation")
   reportsReported Report[]       @relation("ReportedSchoolAdminRelation")

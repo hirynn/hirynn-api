@@ -196,8 +196,8 @@ export class SchoolService {
         data: {
           title: dto.title,
           jobDescription: dto.jobDescription,
-          keyResponsibilities: dto.keyResponsibilities,
-          preferredSkills: dto.preferredSkills,
+          keyResponsibilities: dto.keyResponsibilities ?? '',
+          preferredSkills: dto.preferredSkills ?? '',
           subjects: dto.subjects,
           gradeLevels: dto.gradeLevels,
           location: dto.location,

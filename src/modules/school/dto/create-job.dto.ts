@@ -12,8 +12,8 @@ import { EmploymentType, WorkplaceType } from '@prisma/client';
 export class CreateJobDto {
   @IsString() title: string;
   @IsString() jobDescription: string;
-  @IsString() keyResponsibilities: string;
-  @IsString() preferredSkills: string;
+  @IsOptional() @IsString() keyResponsibilities?: string;
+  @IsOptional() @IsString() preferredSkills?: string;
   @IsString() schoolId: string;
   @IsEnum(EmploymentType) employmentType?: EmploymentType;
   @IsEnum(WorkplaceType) workplaceType?: WorkplaceType;
