@@ -1,20 +1,28 @@
-import { IsString, IsArray, IsOptional, IsEnum, IsDateString, IsBoolean, IsDecimal } from 'class-validator';
-import { EmploymentType } from '@prisma/client';
+import {
+  IsString,
+  IsArray,
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  IsBoolean,
+  IsDecimal,
+} from 'class-validator';
+import { EmploymentType, WorkplaceType } from '@prisma/client';
 
 export class CreateJobDto {
   @IsString() title: string;
-  @IsString() description: string;
-  @IsArray() subjects: string[];
-  @IsArray() gradeLevels: string[];
-  @IsString() location: string;
+  @IsString() jobDescription: string;
+  @IsOptional() @IsString() keyResponsibilities?: string;
+  @IsOptional() @IsString() preferredSkills?: string;
   @IsString() schoolId: string;
-
+  @IsEnum(EmploymentType) employmentType?: EmploymentType;
+  @IsEnum(WorkplaceType) workplaceType?: WorkplaceType;
+  @IsOptional() @IsArray() subjects: string[];
+  @IsOptional() @IsArray() gradeLevels: string[];
+  @IsOptional() @IsString() location: string;
   @IsOptional()
-  @IsString() experienceRequired?: string;
-
-  @IsOptional()
-  @IsEnum(EmploymentType)
-  employmentType?: EmploymentType;
+  @IsString()
+  experienceRequired?: string;
 
   @IsOptional()
   @IsDecimal()
@@ -25,14 +33,18 @@ export class CreateJobDto {
   salaryMax?: string;
 
   @IsOptional()
-  @IsString() requirements?: string;
+  @IsString()
+  requirements?: string;
 
   @IsOptional()
-  @IsString() benefits?: string;
+  @IsString()
+  benefits?: string;
 
   @IsOptional()
-  @IsDateString() applicationDeadline?: string;
+  @IsDateString()
+  applicationDeadline?: string;
 
   @IsOptional()
-  @IsBoolean() isActive?: boolean;
+  @IsBoolean()
+  isActive?: boolean;
 }

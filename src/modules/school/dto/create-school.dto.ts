@@ -1,9 +1,38 @@
-import { IsString, IsOptional, IsUrl, IsEmail, MaxLength,IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUrl,
+  IsEmail,
+  MaxLength,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class JobPosterDto {
+  @IsEmail()
+  email: string;
+}
 
 export class CreateSchoolDto {
   @IsString()
   @MaxLength(200)
   name: string;
+
+  @IsOptional()
+  @IsString()
+  type?: 'PUBLIC' | 'PRIVATE';
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => JobPosterDto)
+  jobPosters?: JobPosterDto[];
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @IsOptional()
   @IsUrl()
@@ -39,5 +68,5 @@ export class CreateSchoolDto {
   @IsOptional()
   @IsEmail()
   contactEmail?: string;
-   @IsOptional() @IsBoolean() isVerified?: boolean;
+  @IsOptional() @IsBoolean() isVerified?: boolean;
 }

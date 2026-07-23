@@ -41,6 +41,7 @@ model Teacher {
   reportsReporter      Report[]         @relation("ReporterRelation")
   reportsReported      Report[]         @relation("ReportedTeacherRelation")
   lisence              Lisence?
+  organizations        Organization[]
 
   // Indexes for search and filtering
   @@index([email])

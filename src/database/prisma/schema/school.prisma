@@ -15,7 +15,7 @@ model SchoolAdmin {
   resetToken   String?
 
   // Relations
-  schools         Organization[]
+  organizations   Organization[]
   notifications   Notification[]
   reportsReporter Report[]       @relation("SchoolAdminReporterRelation")
   reportsReported Report[]       @relation("ReportedSchoolAdminRelation")
@@ -28,30 +28,52 @@ model SchoolAdmin {
   @@map("school_admins")
 }
 
+model JobPoster {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  email          String   @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("job_posters")
+}
+
 model Organization {
-  id            String   @id @default(cuid())
-  schoolAdminId String   @map("school_admin_id")
-  name          String   @db.VarChar(200)
-  logoUrl       String?  @map("logo_url") @db.VarChar(500)
-  bannerUrl     String?  @map("banner_url") @db.VarChar(500)
-  about         String?  @db.Text
-  vision        String?  @db.Text
-  address       String?  @db.VarChar(500)
-  phone         String?  @db.VarChar(20)
-  website       String?  @db.VarChar(200)
-  contactEmail  String?  @map("contact_email") @db.VarChar(255)
-  isVerified    Boolean  @default(false) @map("is_verified")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id           String      @id @default(cuid())
+  teacherId    String      @map("teacherId")
+  // schoolAdminId String?   @map("school_admin_id")
+  type         SchoolType  @default(PUBLIC)
+  description  String?     @db.Text
+  name         String      @db.VarChar(200)
+  logoUrl      String?     @map("logo_url") @db.VarChar(500)
+  bannerUrl    String?     @map("banner_url") @db.VarChar(500)
+  about        String?     @db.Text
+  vision       String?     @db.Text
+  address      String?     @db.VarChar(500)
+  phone        String?     @db.VarChar(20)
+  website      String?     @db.VarChar(200)
+  contactEmail String?     @map("contact_email") @db.VarChar(255)
+  isVerified   Boolean     @default(false) @map("is_verified")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  jobPosters   JobPoster[]
 
   // Relations
-  schoolAdmin SchoolAdmin @relation(fields: [schoolAdminId], references: [id], onDelete: Cascade)
-  jobs        Job[]
+  // schoolAdmin SchoolAdmin? @relation(fields: [schoolAdminId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  jobs    Job[]
 
   cvSubmissions CVSubmission[]
 
+  // schoolAdminId String?
+  schoolAdmin   SchoolAdmin? @relation(fields: [schoolAdminId], references: [id])
+  schoolAdminId String?
+
   // Indexes
-  @@index([schoolAdminId])
+  //@@index([teacherId])
+  @@index([teacherId])
   @@index([name])
   @@index([isVerified])
   @@index([createdAt])

@@ -4,12 +4,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateSchoolDto } from './dto/create-school.dto';
+import { CreateSchoolDto, JobPosterDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
-import { EmploymentType, Prisma, ApplicationStatus } from '@prisma/client';
+import {
+  EmploymentType,
+  Prisma,
+  ApplicationStatus,
+  WorkplaceType,
+} from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import {
   CreateAnonymousApplicationDto,
@@ -27,10 +32,29 @@ export class SchoolService {
   // =======================
   // School CRUD
   // =======================
-  async createSchool(adminId: string, dto: CreateSchoolDto) {
+  async createSchool(teacherId: string, dto: CreateSchoolDto) {
     try {
-      return await this.prisma.organization.create({
-        data: { ...dto, schoolAdminId: adminId },
+      const { jobPosters, ...orgData } = dto;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        const organization = await prisma.organization.create({
+          data: {
+            ...orgData,
+            teacherId: teacherId,
+            isVerified: true, // TODO: in production change it to false
+          },
+        });
+
+        if (jobPosters && jobPosters.length > 0) {
+          await prisma.jobPoster.createMany({
+            data: jobPosters.map((poster) => ({
+              organizationId: organization.id,
+              email: poster.email,
+            })),
+          });
+        }
+
+        return organization;
       });
     } catch (error) {
       handlePrismaError(error);
@@ -39,9 +63,30 @@ export class SchoolService {
 
   async updateSchool(schoolId: string, dto: UpdateSchoolDto) {
     try {
-      return await this.prisma.organization.update({
-        where: { id: schoolId },
-        data: dto,
+      const { jobPosters, ...orgData } = dto;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        const organization = await prisma.organization.update({
+          where: { id: schoolId },
+          data: orgData,
+        });
+
+        if (jobPosters !== undefined) {
+          await prisma.jobPoster.deleteMany({
+            where: { organizationId: schoolId },
+          });
+
+          if (jobPosters.length > 0) {
+            await prisma.jobPoster.createMany({
+              data: jobPosters.map((poster) => ({
+                organizationId: schoolId,
+                email: poster.email,
+              })),
+            });
+          }
+        }
+
+        return organization;
       });
     } catch (error) {
       handlePrismaError(error);
@@ -59,6 +104,18 @@ export class SchoolService {
     }
   }
 
+  async getMySchool(teacherId: string, page = 1, limit = 10) {
+    try {
+      return this.prisma.organization.findMany({
+        where: { teacherId: teacherId },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
   async getSchools(
     adminId: string,
     page = 1,
@@ -66,7 +123,7 @@ export class SchoolService {
     filters?: Partial<{ name: string; isVerified: boolean }>,
   ) {
     try {
-      const where: any = { schoolAdminId: adminId };
+      const where: any = { teacherId: adminId };
       if (filters?.name)
         where.name = { contains: filters.name, mode: 'insensitive' };
       if (filters?.isVerified !== undefined)
@@ -84,12 +141,12 @@ export class SchoolService {
     }
   }
 
-  async getSchoolById(id: string, adminId: string) {
+  async getSchoolById(id: string, teacherId: string) {
     try {
       return await this.prisma.organization.findFirst({
         where: {
           id,
-          schoolAdminId: adminId,
+          teacherId: teacherId,
         },
       });
     } catch (error) {
@@ -138,13 +195,16 @@ export class SchoolService {
       return await this.prisma.job.create({
         data: {
           title: dto.title,
-          description: dto.description,
+          jobDescription: dto.jobDescription,
+          keyResponsibilities: dto.keyResponsibilities ?? '',
+          preferredSkills: dto.preferredSkills ?? '',
           subjects: dto.subjects,
           gradeLevels: dto.gradeLevels,
           location: dto.location,
           schoolId: dto.schoolId,
           experienceRequired: dto.experienceRequired ?? '0',
           employmentType: dto.employmentType ?? EmploymentType.FULL_TIME,
+          workplaceType: dto.workplaceType ?? WorkplaceType.ON_SITE,
           salaryMin: dto.salaryMin ? new Prisma.Decimal(dto.salaryMin) : null,
           salaryMax: dto.salaryMax ? new Prisma.Decimal(dto.salaryMax) : null,
           requirements: dto.requirements ?? null,
@@ -642,6 +702,47 @@ export class SchoolService {
       });
 
       return updatedApplication;
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
+  // =======================
+  // School Asset Uploads
+  // =======================
+  async uploadSchoolLogo(schoolId: string, file: Express.Multer.File, teacherId: string) {
+    try {
+      const school = await this.prisma.organization.findFirst({
+        where: { id: schoolId, teacherId },
+      });
+      if (!school) {
+        throw new NotFoundException(`School with id ${schoolId} not found or not owned by teacher`);
+      }
+
+      const { url } = await this.cloudinaryService.uploadFile(file, 'schools/logos');
+      return await this.prisma.organization.update({
+        where: { id: schoolId },
+        data: { logoUrl: url },
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+
+  async uploadSchoolBanner(schoolId: string, file: Express.Multer.File, teacherId: string) {
+    try {
+      const school = await this.prisma.organization.findFirst({
+        where: { id: schoolId, teacherId },
+      });
+      if (!school) {
+        throw new NotFoundException(`School with id ${schoolId} not found or not owned by teacher`);
+      }
+
+      const { url } = await this.cloudinaryService.uploadFile(file, 'schools/banners');
+      return await this.prisma.organization.update({
+        where: { id: schoolId },
+        data: { bannerUrl: url },
+      });
     } catch (error) {
       handlePrismaError(error);
     }

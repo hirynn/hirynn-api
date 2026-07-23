@@ -2,12 +2,15 @@ model Job {
   id                  String         @id @default(cuid())
   schoolId            String         @map("school_id")
   title               String         @db.VarChar(200)
-  description         String         @db.Text
+  jobDescription      String         @db.Text
+  keyResponsibilities String         @db.Text
+  preferredSkills     String         @db.Text
   subjects            String[]
   gradeLevels         String[]       @map("grade_levels")
   experienceRequired  String         @map("experience_required") @db.VarChar(100)
-  location            String         @db.VarChar(200)
+  location            String?        @db.VarChar(200)
   employmentType      EmploymentType @map("employment_type")
+  workplaceType       WorkplaceType  @map("workplace_type")
   salaryMin           Decimal?       @map("salary_min") @db.Decimal(10, 2)
   salaryMax           Decimal?       @map("salary_max") @db.Decimal(10, 2)
   requirements        String?        @db.Text
