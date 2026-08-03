@@ -61,3 +61,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
 prod_backup.sql
+
+# uploaded files (served from disk, not committed)
+/storage

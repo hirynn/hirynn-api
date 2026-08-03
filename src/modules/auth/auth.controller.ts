@@ -99,10 +99,9 @@ export interface LinkedInUserProfile {
   locale?: string;
 }
 
-
 @ApiTags('Authentication')
 @Controller('auth')
-@UseGuards(ThrottlerGuard)
+// @UseGuards(ThrottlerGuard)
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
@@ -473,9 +472,7 @@ export class AuthController {
     description: 'User type for LinkedIn authentication',
   })
   @ApiResponse({ status: 302, description: 'Redirect to LinkedIn OAuth' })
-  linkedinAuth(
-    @Res() res: Response,
-  ): void {
+  linkedinAuth(@Res() res: Response): void {
     const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${process.env.LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.LINKEDIN_CALLBACK_URL!)}&scope=openid%20profile%20email`;
     console.log(linkedinAuthUrl);
 
@@ -566,10 +563,10 @@ export class AuthController {
   @ApiResponse({ status: 429, description: 'Too many authentication attempts' })
   async linkedinLogin(
     @Body() linkedInAuthDto: LinkedInAuthDto,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ): Promise<LinkedInAuthResponse> {
     //Get user profile
-    
+
     // Authenticate with your auth service
     const authResponse = await this.authService.linkedinAuth(
       linkedInAuthDto.linkedInToken,
@@ -768,6 +765,14 @@ export class AuthController {
   async getProfile(@Req() req: any): Promise<UserProfile> {
     const user = req.user as UserProfile;
     this.logger.log(`Profile accessed for user: ${user.id}`);
+
+    if (user.userType === UserType.TEACHER) {
+      const organizations = await this.prisma.organization.findMany({
+        where: { teacherId: user.id },
+        select: { id: true, name: true, isVerified: true },
+      });
+      return { ...user, organizations };
+    }
 
     if (user.userType === UserType.SCHOOL_ADMIN) {
       const organizations = await this.prisma.organization.findMany({

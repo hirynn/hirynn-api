@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,57 +10,73 @@ import { UpdatePostDto } from './dto/update-post.dto';
 import { Prisma } from '@prisma/client';
 import { handlePrismaError } from '../../../common/utils/prisma-error.util';
 
+const POST_INCLUDE = {
+  author: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      profilePhotoUrl: true,
+    },
+  },
+  organization: {
+    select: {
+      id: true,
+      name: true,
+      logoUrl: true,
+    },
+  },
+  comments: true,
+  likes: true,
+} satisfies Prisma.PostInclude;
+
 @Injectable()
 export class PostService {
   constructor(private prisma: PrismaService) {}
 
   async create(authorId: string, dto: CreatePostDto) {
     try {
+      if (dto.organizationId) {
+        const org = await this.prisma.organization.findUnique({
+          where: { id: dto.organizationId },
+        });
+        if (!org) throw new NotFoundException('Organization not found');
+        if (org.teacherId !== authorId) {
+          throw new ForbiddenException(
+            'You can only post as a page you own',
+          );
+        }
+      }
+
       return await this.prisma.post.create({
         data: {
           authorId,
+          organizationId: dto.organizationId ?? null,
           content: dto.content,
         },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              profilePhotoUrl: true,
-            },
-          },
-          comments: true,
-          likes: true,
-        },
+        include: POST_INCLUDE,
       });
     } catch (err) {
       handlePrismaError(err);
     }
   }
 
-  async findAll(page = 1, limit = 10, filters?: Partial<{ authorId: string }>) {
+  async findAll(
+    page = 1,
+    limit = 10,
+    filters?: Partial<{ authorId: string; organizationId: string }>,
+  ) {
     const skip = (page - 1) * limit;
     const where: any = {};
 
     if (filters?.authorId) where.authorId = filters.authorId;
+    if (filters?.organizationId) where.organizationId = filters.organizationId;
 
     try {
       const [posts, total] = await Promise.all([
         this.prisma.post.findMany({
           where,
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                profilePhotoUrl: true,
-              },
-            },
-            comments: true,
-            likes: true,
-          },
+          include: POST_INCLUDE,
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
@@ -85,18 +102,7 @@ export class PostService {
     try {
       const post = await this.prisma.post.findUnique({
         where: { id },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              profilePhotoUrl: true,
-            },
-          },
-          comments: true,
-          likes: true,
-        },
+        include: POST_INCLUDE,
       });
 
       if (!post) throw new NotFoundException('Post not found');
@@ -123,18 +129,7 @@ export class PostService {
       return await this.prisma.post.update({
         where: { id: postId },
         data: { content: updatedContent },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              profilePhotoUrl: true,
-            },
-          },
-          comments: true,
-          likes: true,
-        },
+        include: POST_INCLUDE,
       });
     } catch (err) {
       handlePrismaError(err);

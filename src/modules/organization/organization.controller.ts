@@ -38,8 +38,12 @@ export class OrganizationController {
     );
   }
   @Get(':id')
-  async getOrganizationById(@Param('id') id: string) {
-    const organization = await this.organizationService.getOrganizationById(id);
+  @UseGuards(OptionalJwtAuthGuard)
+  async getOrganizationById(@Param('id') id: string, @Req() req: any) {
+    const organization = await this.organizationService.getOrganizationById(
+      id,
+      req.user?.id,
+    );
     return {
       data: organization,
     };

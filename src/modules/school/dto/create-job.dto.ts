@@ -15,8 +15,8 @@ export class CreateJobDto {
   @IsOptional() @IsString() keyResponsibilities?: string;
   @IsOptional() @IsString() preferredSkills?: string;
   @IsString() schoolId: string;
-  @IsEnum(EmploymentType) employmentType?: EmploymentType;
-  @IsEnum(WorkplaceType) workplaceType?: WorkplaceType;
+  @IsOptional() @IsEnum(EmploymentType) employmentType?: EmploymentType;
+  @IsOptional() @IsEnum(WorkplaceType) workplaceType?: WorkplaceType;
   @IsOptional() @IsArray() subjects: string[];
   @IsOptional() @IsArray() gradeLevels: string[];
   @IsOptional() @IsString() location: string;

@@ -16,7 +16,8 @@ import { ApplicationStatus, LisenceStatus } from '@prisma/client';
 import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
 import { UploadResumeDto } from './dto/upload-resume.dto';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { UploadsService } from '../uploads/uploads.service';
+import { UploadFolder } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import { UploadLisenceDto } from './dto/upload-lisence.dto';
 
@@ -24,7 +25,7 @@ import { UploadLisenceDto } from './dto/upload-lisence.dto';
 export class TeacherService {
   constructor(
     private prisma: PrismaService,
-    private cloudinaryService: CloudinaryService,
+    private uploadsService: UploadsService,
   ) {}
 
   // =======================
@@ -478,18 +479,27 @@ export class TeacherService {
 
       if (teacher.resumeUrl) {
         try {
-          const publicId = this.extractPublicId(teacher.resumeUrl);
-          await this.cloudinaryService.deleteFile(publicId, true);
+          const uploadId = this.extractUploadId(teacher.resumeUrl);
+          if (uploadId) {
+            await this.uploadsService.softDelete(uploadId, {
+              id: teacherId,
+              isAdmin: false,
+            });
+          }
         } catch (error) {
           console.error('Error deleting old resume:', error);
         }
       }
 
-      const { url } = await this.cloudinaryService.uploadFile(file, 'resumes');
+      const { publicUrl } = await this.uploadsService.upload(
+        file,
+        UploadFolder.RESUMES,
+        teacherId,
+      );
 
       return await this.prisma.teacher.update({
         where: { id: teacherId },
-        data: { resumeUrl: url },
+        data: { resumeUrl: publicUrl },
         select: {
           id: true,
           name: true,
@@ -515,10 +525,15 @@ export class TeacherService {
 
       if (teacher.resumeUrl) {
         try {
-          const publicId = this.extractPublicId(teacher.resumeUrl);
-          await this.cloudinaryService.deleteFile(publicId, true);
+          const uploadId = this.extractUploadId(teacher.resumeUrl);
+          if (uploadId) {
+            await this.uploadsService.softDelete(uploadId, {
+              id: teacherId,
+              isAdmin: false,
+            });
+          }
         } catch (error) {
-          console.error('Error deleting resume from Cloudinary:', error);
+          console.error('Error deleting resume:', error);
         }
       }
 
@@ -553,21 +568,27 @@ export class TeacherService {
 
       if (teacher.profilePhotoUrl) {
         try {
-          const publicId = this.extractPublicId(teacher.profilePhotoUrl);
-          await this.cloudinaryService.deleteFile(publicId);
+          const uploadId = this.extractUploadId(teacher.profilePhotoUrl);
+          if (uploadId) {
+            await this.uploadsService.softDelete(uploadId, {
+              id: teacherId,
+              isAdmin: false,
+            });
+          }
         } catch (error) {
           console.error('Error deleting old profile photo:', error);
         }
       }
 
-      const { url } = await this.cloudinaryService.uploadFile(
+      const { publicUrl } = await this.uploadsService.upload(
         file,
-        'profile_photos',
+        UploadFolder.PROFILE_PHOTOS,
+        teacherId,
       );
 
       return await this.prisma.teacher.update({
         where: { id: teacherId },
-        data: { profilePhotoUrl: url },
+        data: { profilePhotoUrl: publicUrl },
         select: {
           id: true,
           name: true,
@@ -593,10 +614,15 @@ export class TeacherService {
 
       if (teacher.profilePhotoUrl) {
         try {
-          const publicId = this.extractPublicId(teacher.profilePhotoUrl);
-          await this.cloudinaryService.deleteFile(publicId);
+          const uploadId = this.extractUploadId(teacher.profilePhotoUrl);
+          if (uploadId) {
+            await this.uploadsService.softDelete(uploadId, {
+              id: teacherId,
+              isAdmin: false,
+            });
+          }
         } catch (error) {
-          console.error('Error deleting profile photo from Cloudinary:', error);
+          console.error('Error deleting profile photo:', error);
         }
       }
 
@@ -632,19 +658,23 @@ export class TeacherService {
       if (!teacher) {
         throw new NotFoundException('Teacher with that id not found');
       }
-      const { url } = await this.cloudinaryService.uploadFile(file, 'lisences');
+      const { publicUrl } = await this.uploadsService.upload(
+        file,
+        UploadFolder.LISENCES,
+        teacherId,
+      );
       const lisence = await this.prisma.lisence.upsert({
         where: { teacherId },
         update: {
           lisenceNumber: dto.lisenceNumber,
-          documentUrl: url,
+          documentUrl: publicUrl,
           issuingOrganization: dto.issuingOrganization,
           status: LisenceStatus.PENDING,
         },
         create: {
           teacherId,
           lisenceNumber: dto.lisenceNumber,
-          documentUrl: url,
+          documentUrl: publicUrl,
           status: LisenceStatus.PENDING,
         },
       });
@@ -748,9 +778,8 @@ export class TeacherService {
 
   // Helper
 
-  private extractPublicId(url: string): string {
-    const parts = url.split('/');
-    const lastTwo = parts.slice(-2).join('/');
-    return lastTwo.split('.')[0];
+  private extractUploadId(url: string): string | null {
+    const match = url.match(/\/uploads\/file\/([^/?#]+)/);
+    return match ? match[1] : null;
   }
 }

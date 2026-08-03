@@ -64,6 +64,7 @@ model Organization {
   // schoolAdmin SchoolAdmin? @relation(fields: [schoolAdminId], references: [id], onDelete: Cascade)
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   jobs    Job[]
+  posts   Post[]
 
   cvSubmissions CVSubmission[]
 

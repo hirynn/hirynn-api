@@ -1,19 +1,22 @@
 model Post {
-  id            String   @id @default(cuid())
-  authorId      String   @map("author_id")
-  content       Json
-  likesCount    Int      @default(0) @map("likes_count") @db.Integer
-  commentsCount Int      @default(0) @map("comments_count") @db.Integer
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id             String   @id @default(cuid())
+  authorId       String   @map("author_id")
+  organizationId String?  @map("organization_id")
+  content        Json
+  likesCount     Int      @default(0) @map("likes_count") @db.Integer
+  commentsCount  Int      @default(0) @map("comments_count") @db.Integer
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  author   Teacher   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments Comment[]
-  likes    Like[]
+  author       Teacher       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  comments     Comment[]
+  likes        Like[]
 
   // Indexes for feed and search
   @@index([authorId])
+  @@index([organizationId])
   @@index([createdAt])
   @@index([likesCount])
   @@index([commentsCount])

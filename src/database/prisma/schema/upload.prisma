@@ -1,0 +1,32 @@
+enum UploadFolder {
+  PROFILE_PHOTOS
+  RESUMES
+  LISENCES
+  ORGANIZATION_LOGOS
+  ORGANIZATION_BANNERS
+  ANONYMOUS_RESUMES
+  CV_SUBMISSIONS
+  MISC
+}
+
+model FileUpload {
+  id           String       @id @default(cuid())
+  originalName String       @map("original_name")
+  storedName   String       @map("stored_name")
+  mimeType     String       @map("mime_type")
+  size         Int
+  folder       UploadFolder
+  relativePath String       @map("relative_path")
+  uploadedById String?      @map("uploaded_by_id")
+  isDeleted    Boolean      @default(false) @map("is_deleted")
+  deletedAt    DateTime?    @map("deleted_at") @db.Timestamptz
+  trashPath    String?      @map("trash_path")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([uploadedById])
+  @@index([folder])
+  @@index([isDeleted])
+  @@index([createdAt])
+  @@map("file_uploads")
+}

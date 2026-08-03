@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { TeacherService } from './teacher.service';
 import { TeacherController } from './teacher.controller';
 import { PrismaService } from '../../database/prisma.service';
-import { CloudinaryModule } from '../cloudinary/cloudinary.module';
+import { UploadsModule } from '../uploads/uploads.module';
 @Module({
-   imports: [CloudinaryModule],
+   imports: [UploadsModule],
   controllers: [TeacherController],
   providers: [TeacherService, PrismaService],
   exports: [TeacherService],

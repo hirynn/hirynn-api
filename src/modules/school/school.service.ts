@@ -14,20 +14,26 @@ import {
   Prisma,
   ApplicationStatus,
   WorkplaceType,
+  UploadFolder,
 } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 import {
   CreateAnonymousApplicationDto,
   CVSubmissionDto,
 } from './dto/CreateAnonymousApplicationDto';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { UploadsService } from '../uploads/uploads.service';
 
 @Injectable()
 export class SchoolService {
   constructor(
     private prisma: PrismaService,
-    private cloudinaryService: CloudinaryService,
+    private uploadsService: UploadsService,
   ) {}
+
+  private extractUploadId(url: string): string | null {
+    const match = url.match(/\/uploads\/file\/([^/?#]+)/);
+    return match ? match[1] : null;
+  }
 
   // =======================
   // School CRUD
@@ -247,7 +253,13 @@ export class SchoolService {
         where: { id: jobId },
         include: {
           school: {
-            select: { id: true, name: true, address: true, logoUrl: true },
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              logoUrl: true,
+              website: true,
+            },
           },
         },
       });
@@ -576,12 +588,12 @@ export class SchoolService {
     };
   }
   async uploadAnonymousResume(file: Express.Multer.File) {
-    const { url } = await this.cloudinaryService.uploadFile(
+    const { publicUrl } = await this.uploadsService.upload(
       file,
-      'resumes/anonymous',
+      UploadFolder.ANONYMOUS_RESUMES,
     );
     return {
-      resumeUrl: url,
+      resumeUrl: publicUrl,
     };
   }
   async applyToJobAnonymous(
@@ -719,10 +731,23 @@ export class SchoolService {
         throw new NotFoundException(`School with id ${schoolId} not found or not owned by teacher`);
       }
 
-      const { url } = await this.cloudinaryService.uploadFile(file, 'schools/logos');
+      if (school.logoUrl) {
+        const uploadId = this.extractUploadId(school.logoUrl);
+        if (uploadId) {
+          await this.uploadsService
+            .softDelete(uploadId, { id: teacherId, isAdmin: false })
+            .catch(() => undefined);
+        }
+      }
+
+      const { publicUrl } = await this.uploadsService.upload(
+        file,
+        UploadFolder.ORGANIZATION_LOGOS,
+        teacherId,
+      );
       return await this.prisma.organization.update({
         where: { id: schoolId },
-        data: { logoUrl: url },
+        data: { logoUrl: publicUrl },
       });
     } catch (error) {
       handlePrismaError(error);
@@ -738,10 +763,23 @@ export class SchoolService {
         throw new NotFoundException(`School with id ${schoolId} not found or not owned by teacher`);
       }
 
-      const { url } = await this.cloudinaryService.uploadFile(file, 'schools/banners');
+      if (school.bannerUrl) {
+        const uploadId = this.extractUploadId(school.bannerUrl);
+        if (uploadId) {
+          await this.uploadsService
+            .softDelete(uploadId, { id: teacherId, isAdmin: false })
+            .catch(() => undefined);
+        }
+      }
+
+      const { publicUrl } = await this.uploadsService.upload(
+        file,
+        UploadFolder.ORGANIZATION_BANNERS,
+        teacherId,
+      );
       return await this.prisma.organization.update({
         where: { id: schoolId },
-        data: { bannerUrl: url },
+        data: { bannerUrl: publicUrl },
       });
     } catch (error) {
       handlePrismaError(error);

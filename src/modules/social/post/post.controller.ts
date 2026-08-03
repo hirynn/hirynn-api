@@ -28,8 +28,9 @@ export class PostController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('authorId') authorId?: string,
+    @Query('organizationId') organizationId?: string,
   ) {
-    return this.postService.findAll(page, limit, { authorId});
+    return this.postService.findAll(page, limit, { authorId, organizationId });
   }
 
   @Get(':id')

@@ -156,13 +156,13 @@ export class SchoolController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Patch('job/:id')
   updateJob(@Param('id') id: string, @Body() dto: UpdateJobDto) {
     return this.schoolService.updateJob(id, dto);
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Delete('job/:id')
   deleteJob(@Param('id') id: string) {
     return this.schoolService.deleteJob(id);
@@ -289,14 +289,14 @@ export class SchoolController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Get('job/:jobId/applicants')
   getApplicants(@Param('jobId') jobId: string, @Query() query: any) {
     const { page = 1, limit = 10 } = query;
     return this.schoolService.getApplicants(jobId, Number(page), Number(limit));
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SCHOOL_ADMIN')
+  @Roles('TEACHER')
   @Patch('job/:jobId/applicants/:teacherId')
   updateApplicationStatus(
     @Param('jobId') jobId: string,

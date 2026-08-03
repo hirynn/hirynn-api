@@ -1,13 +1,6 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateJobOrganizationDto } from './dto/create-job-organization.dto';
-import { UpdateJobOrganizationDto } from './dto/update-job-organization.dto';
-import { UpdateApplicationDto } from './dto/update-application.dto';
-import { ApplicationStatus, EmploymentType, FollowType } from '@prisma/client';
+import { FollowType } from '@prisma/client';
 import { handlePrismaError } from '../../common/utils/prisma-error.util';
 
 @Injectable()
@@ -170,7 +163,7 @@ export class OrganizationService {
     }
   }
 
-  async getOrganizationById(orgId: string) {
+  async getOrganizationById(orgId: string, userId?: string) {
     try {
       const organization = await this.prisma.organization.findUnique({
         where: { id: orgId },
@@ -178,15 +171,29 @@ export class OrganizationService {
       if (!organization) {
         throw new Error('Organization not found');
       }
-      const followerCountResult = await this.prisma.follow.count({
-        where: {
-          followingType: FollowType.SCHOOL,
-          followingId: orgId,
-        },
-      });
+      const [followerCountResult, isFollowed] = await Promise.all([
+        this.prisma.follow.count({
+          where: {
+            followingType: FollowType.SCHOOL,
+            followingId: orgId,
+          },
+        }),
+        userId
+          ? this.prisma.follow.findUnique({
+              where: {
+                followerId_followingId_followingType: {
+                  followerId: userId,
+                  followingId: orgId,
+                  followingType: FollowType.SCHOOL,
+                },
+              },
+            })
+          : null,
+      ]);
       return {
         organization,
         followerCount: followerCountResult,
+        isFollowed: !!isFollowed,
       };
     } catch (e) {
       handlePrismaError(e);
