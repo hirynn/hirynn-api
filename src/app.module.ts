@@ -20,6 +20,7 @@ import { ReportModule } from './modules/report/report.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { IntegrationModule } from './modules/integration/integration.module';
 @Module({
   imports: [
     // ThrottlerModule.forRoot([
@@ -47,6 +48,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     OrganizationModule,
     ContactModule,
     UploadsModule,
+    IntegrationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

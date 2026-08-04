@@ -72,6 +72,10 @@ model Organization {
   schoolAdmin   SchoolAdmin? @relation(fields: [schoolAdminId], references: [id])
   schoolAdminId String?
 
+  // Betterschool Directory link — set once a directory school admin approves
+  // a DirectoryConnectionRequest for this organization.
+  directorySchoolId String? @unique @map("directory_school_id")
+
   // Indexes
   //@@index([teacherId])
   @@index([teacherId])
@@ -79,4 +83,31 @@ model Organization {
   @@index([isVerified])
   @@index([createdAt])
   @@map("organizations")
+}
+
+// A short-lived handshake between a Betterschool Directory school (already
+// authenticated in its own dashboard) and a Hirynn organization the signed-in
+// Hirynn school admin manages. Mirrors an OAuth device-code flow: the
+// directory backend mints a `code` server-to-server, sends its admin to the
+// Hirynn dashboard to approve it there, and polls this record for the outcome.
+model DirectoryConnectionRequest {
+  id                    String    @id @default(cuid())
+  code                  String    @unique
+  // The DirectorySchool _id (Mongo ObjectId, stored as string).
+  directorySchoolId     String    @map("directory_school_id")
+  // Cached only for display on Hirynn's "authorize connection" screen.
+  directorySchoolName   String?   @map("directory_school_name")
+  directorySchoolLogo   String?   @map("directory_school_logo")
+  requestedByName       String?   @map("requested_by_name")
+  requestedByEmail      String?   @map("requested_by_email")
+  status                String    @default("pending") // pending | approved | expired
+  // Set once approved.
+  organizationId        String?   @map("organization_id")
+  expiresAt             DateTime  @map("expires_at") @db.Timestamptz
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([directorySchoolId])
+  @@index([status])
+  @@map("directory_connection_requests")
 }
